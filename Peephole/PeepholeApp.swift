@@ -23,6 +23,16 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         print("✅ [APPDELEGATE] AppCheck debug provider configured")
         #endif
 
+        // デバッグ: GoogleService-Info.plistの読み込み確認
+        if let filePath = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
+           let plist = NSDictionary(contentsOfFile: filePath) {
+            print("🔍 [DEBUG] GoogleService-Info.plist path: \(filePath)")
+            print("🔍 [DEBUG] PROJECT_ID from loaded plist: \(plist["PROJECT_ID"] ?? "not found")")
+            print("🔍 [DEBUG] BUNDLE_ID from loaded plist: \(plist["BUNDLE_ID"] ?? "not found")")
+        } else {
+            print("❌ [DEBUG] GoogleService-Info.plist NOT FOUND in bundle")
+        }
+
         print("🔵 [APPDELEGATE] Configuring Firebase...")
         FirebaseApp.configure()
         print("✅ [APPDELEGATE] Firebase configured")
