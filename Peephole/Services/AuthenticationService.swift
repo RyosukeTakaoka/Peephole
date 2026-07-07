@@ -4,7 +4,7 @@
 //
 //  Firebase Authentication のラッパークラス
 //  ログイン、サインアップ、ログアウトなどの認証処理を担当
-//
+//  2026/7/7
 
 import Foundation
 import FirebaseAuth
