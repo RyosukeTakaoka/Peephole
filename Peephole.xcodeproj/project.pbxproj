@@ -1,0 +1,1034 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		778777622FFA8639003FE164 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 778777612FFA8639003FE164 /* WidgetKit.framework */; };
+		778777642FFA8639003FE164 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 778777632FFA8639003FE164 /* SwiftUI.framework */; };
+		778777712FFA863C003FE164 /* PeepholeWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7787775F2FFA8639003FE164 /* PeepholeWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		778777902FFAB72E003FE164 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7787778F2FFAB72E003FE164 /* GoogleService-Info.plist */; };
+		778777932FFAB991003FE164 /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = 778777922FFAB991003FE164 /* FirebaseAI */; };
+		778777952FFAB991003FE164 /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = 778777942FFAB991003FE164 /* FirebaseAILogic */; };
+		778777972FFAB991003FE164 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 778777962FFAB991003FE164 /* FirebaseAnalytics */; };
+		778777992FFAB991003FE164 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = 778777982FFAB991003FE164 /* FirebaseAnalyticsCore */; };
+		7787779B2FFAB991003FE164 /* FirebaseAnalyticsIdentitySupport in Frameworks */ = {isa = PBXBuildFile; productRef = 7787779A2FFAB991003FE164 /* FirebaseAnalyticsIdentitySupport */; };
+		7787779D2FFAB991003FE164 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 7787779C2FFAB991003FE164 /* FirebaseAppCheck */; };
+		7787779F2FFAB991003FE164 /* FirebaseAppDistribution-Beta in Frameworks */ = {isa = PBXBuildFile; productRef = 7787779E2FFAB991003FE164 /* FirebaseAppDistribution-Beta */; };
+		778777A12FFAB991003FE164 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 778777A02FFAB991003FE164 /* FirebaseAuth */; };
+		778777A32FFAB991003FE164 /* FirebaseAuthCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 778777A22FFAB991003FE164 /* FirebaseAuthCombine-Community */; };
+		778777A52FFAB991003FE164 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 778777A42FFAB991003FE164 /* FirebaseCore */; };
+		778777A72FFAB991003FE164 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 778777A62FFAB991003FE164 /* FirebaseCrashlytics */; };
+		778777A92FFAB991003FE164 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 778777A82FFAB991003FE164 /* FirebaseDatabase */; };
+		778777AB2FFAB991003FE164 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 778777AA2FFAB991003FE164 /* FirebaseFirestore */; };
+		778777AD2FFAB991003FE164 /* FirebaseFirestoreCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 778777AC2FFAB991003FE164 /* FirebaseFirestoreCombine-Community */; };
+		778777AF2FFAB991003FE164 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 778777AE2FFAB991003FE164 /* FirebaseFunctions */; };
+		778777B12FFAB991003FE164 /* FirebaseFunctionsCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 778777B02FFAB991003FE164 /* FirebaseFunctionsCombine-Community */; };
+		778777B32FFAB991003FE164 /* FirebaseInAppMessaging-Beta in Frameworks */ = {isa = PBXBuildFile; productRef = 778777B22FFAB991003FE164 /* FirebaseInAppMessaging-Beta */; };
+		778777B52FFAB991003FE164 /* FirebaseInstallations in Frameworks */ = {isa = PBXBuildFile; productRef = 778777B42FFAB991003FE164 /* FirebaseInstallations */; };
+		778777B72FFAB991003FE164 /* FirebaseMLModelDownloader in Frameworks */ = {isa = PBXBuildFile; productRef = 778777B62FFAB991003FE164 /* FirebaseMLModelDownloader */; };
+		778777B92FFAB991003FE164 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 778777B82FFAB991003FE164 /* FirebaseMessaging */; };
+		778777BB2FFAB991003FE164 /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = 778777BA2FFAB991003FE164 /* FirebasePerformance */; };
+		778777BD2FFAB991003FE164 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = 778777BC2FFAB991003FE164 /* FirebaseRemoteConfig */; };
+		778777BF2FFAB991003FE164 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 778777BE2FFAB991003FE164 /* FirebaseStorage */; };
+		778777C12FFAB991003FE164 /* FirebaseStorageCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 778777C02FFAB991003FE164 /* FirebaseStorageCombine-Community */; };
+		778777E72FFB4F1A003FE164 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 778777E62FFB4F1A003FE164 /* FirebaseAuth */; };
+		778777EB2FFB4F1A003FE164 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 778777EA2FFB4F1A003FE164 /* FirebaseFirestore */; };
+		778777ED2FFB5012003FE164 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 778777EC2FFB5012003FE164 /* FirebaseCore */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		7787773F2FFA85DA003FE164 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 778777292FFA85D9003FE164 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 778777302FFA85D9003FE164;
+			remoteInfo = Peephole;
+		};
+		778777492FFA85DA003FE164 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 778777292FFA85D9003FE164 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 778777302FFA85D9003FE164;
+			remoteInfo = Peephole;
+		};
+		7787776F2FFA863C003FE164 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 778777292FFA85D9003FE164 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7787775E2FFA8639003FE164;
+			remoteInfo = PeepholeWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		778777762FFA863C003FE164 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				778777712FFA863C003FE164 /* PeepholeWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		778777312FFA85D9003FE164 /* Peephole.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Peephole.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7787773E2FFA85DA003FE164 /* PeepholeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PeepholeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		778777482FFA85DA003FE164 /* PeepholeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PeepholeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7787775F2FFA8639003FE164 /* PeepholeWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PeepholeWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		778777612FFA8639003FE164 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		778777632FFA8639003FE164 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		778777782FFA9E85003FE164 /* PeepholeWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PeepholeWidgetExtension.entitlements; sourceTree = "<group>"; };
+		7787778F2FFAB72E003FE164 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		7787781F2FFB5743003FE164 /* Peephole.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = Peephole.xctestplan; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		778777722FFA863C003FE164 /* Exceptions for "PeepholeWidget" folder in "PeepholeWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 7787775E2FFA8639003FE164 /* PeepholeWidgetExtension */;
+		};
+		7787778C2FFAA16F003FE164 /* Exceptions for "Peephole" folder in "Peephole" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 778777302FFA85D9003FE164 /* Peephole */;
+		};
+		778778662FFB9802003FE164 /* Exceptions for "Peephole" folder in "PeepholeWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/Models.swift,
+				Shared/SharedDataManager.swift,
+			);
+			target = 7787775E2FFA8639003FE164 /* PeepholeWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		778777332FFA85D9003FE164 /* Peephole */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7787778C2FFAA16F003FE164 /* Exceptions for "Peephole" folder in "Peephole" target */,
+				778778662FFB9802003FE164 /* Exceptions for "Peephole" folder in "PeepholeWidgetExtension" target */,
+			);
+			path = Peephole;
+			sourceTree = "<group>";
+		};
+		778777412FFA85DA003FE164 /* PeepholeTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PeepholeTests;
+			sourceTree = "<group>";
+		};
+		7787774B2FFA85DA003FE164 /* PeepholeUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PeepholeUITests;
+			sourceTree = "<group>";
+		};
+		778777652FFA8639003FE164 /* PeepholeWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				778777722FFA863C003FE164 /* Exceptions for "PeepholeWidget" folder in "PeepholeWidgetExtension" target */,
+			);
+			path = PeepholeWidget;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7787772E2FFA85D9003FE164 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7787779F2FFAB991003FE164 /* FirebaseAppDistribution-Beta in Frameworks */,
+				778777AB2FFAB991003FE164 /* FirebaseFirestore in Frameworks */,
+				778777A32FFAB991003FE164 /* FirebaseAuthCombine-Community in Frameworks */,
+				778777B52FFAB991003FE164 /* FirebaseInstallations in Frameworks */,
+				778777952FFAB991003FE164 /* FirebaseAILogic in Frameworks */,
+				7787779B2FFAB991003FE164 /* FirebaseAnalyticsIdentitySupport in Frameworks */,
+				778777B32FFAB991003FE164 /* FirebaseInAppMessaging-Beta in Frameworks */,
+				778777932FFAB991003FE164 /* FirebaseAI in Frameworks */,
+				778777A72FFAB991003FE164 /* FirebaseCrashlytics in Frameworks */,
+				778777B12FFAB991003FE164 /* FirebaseFunctionsCombine-Community in Frameworks */,
+				778777C12FFAB991003FE164 /* FirebaseStorageCombine-Community in Frameworks */,
+				778777A92FFAB991003FE164 /* FirebaseDatabase in Frameworks */,
+				778777BF2FFAB991003FE164 /* FirebaseStorage in Frameworks */,
+				778777BD2FFAB991003FE164 /* FirebaseRemoteConfig in Frameworks */,
+				778777972FFAB991003FE164 /* FirebaseAnalytics in Frameworks */,
+				778777B92FFAB991003FE164 /* FirebaseMessaging in Frameworks */,
+				778777B72FFAB991003FE164 /* FirebaseMLModelDownloader in Frameworks */,
+				778777BB2FFAB991003FE164 /* FirebasePerformance in Frameworks */,
+				778777A52FFAB991003FE164 /* FirebaseCore in Frameworks */,
+				7787779D2FFAB991003FE164 /* FirebaseAppCheck in Frameworks */,
+				778777992FFAB991003FE164 /* FirebaseAnalyticsCore in Frameworks */,
+				778777AF2FFAB991003FE164 /* FirebaseFunctions in Frameworks */,
+				778777A12FFAB991003FE164 /* FirebaseAuth in Frameworks */,
+				778777AD2FFAB991003FE164 /* FirebaseFirestoreCombine-Community in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7787773B2FFA85DA003FE164 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				778777E72FFB4F1A003FE164 /* FirebaseAuth in Frameworks */,
+				778777ED2FFB5012003FE164 /* FirebaseCore in Frameworks */,
+				778777EB2FFB4F1A003FE164 /* FirebaseFirestore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		778777452FFA85DA003FE164 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7787775C2FFA8639003FE164 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				778777642FFA8639003FE164 /* SwiftUI.framework in Frameworks */,
+				778777622FFA8639003FE164 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		778777282FFA85D9003FE164 = {
+			isa = PBXGroup;
+			children = (
+				7787781F2FFB5743003FE164 /* Peephole.xctestplan */,
+				778777782FFA9E85003FE164 /* PeepholeWidgetExtension.entitlements */,
+				778777332FFA85D9003FE164 /* Peephole */,
+				778777412FFA85DA003FE164 /* PeepholeTests */,
+				7787774B2FFA85DA003FE164 /* PeepholeUITests */,
+				778777652FFA8639003FE164 /* PeepholeWidget */,
+				778777602FFA8639003FE164 /* Frameworks */,
+				778777322FFA85D9003FE164 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		778777322FFA85D9003FE164 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				778777312FFA85D9003FE164 /* Peephole.app */,
+				7787773E2FFA85DA003FE164 /* PeepholeTests.xctest */,
+				778777482FFA85DA003FE164 /* PeepholeUITests.xctest */,
+				7787775F2FFA8639003FE164 /* PeepholeWidgetExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		778777602FFA8639003FE164 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				778777612FFA8639003FE164 /* WidgetKit.framework */,
+				778777632FFA8639003FE164 /* SwiftUI.framework */,
+				7787778F2FFAB72E003FE164 /* GoogleService-Info.plist */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		778777302FFA85D9003FE164 /* Peephole */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 778777522FFA85DA003FE164 /* Build configuration list for PBXNativeTarget "Peephole" */;
+			buildPhases = (
+				7787772D2FFA85D9003FE164 /* Sources */,
+				7787772E2FFA85D9003FE164 /* Frameworks */,
+				7787772F2FFA85D9003FE164 /* Resources */,
+				778777762FFA863C003FE164 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				778777702FFA863C003FE164 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				778777332FFA85D9003FE164 /* Peephole */,
+			);
+			name = Peephole;
+			packageProductDependencies = (
+				778777922FFAB991003FE164 /* FirebaseAI */,
+				778777942FFAB991003FE164 /* FirebaseAILogic */,
+				778777962FFAB991003FE164 /* FirebaseAnalytics */,
+				778777982FFAB991003FE164 /* FirebaseAnalyticsCore */,
+				7787779A2FFAB991003FE164 /* FirebaseAnalyticsIdentitySupport */,
+				7787779C2FFAB991003FE164 /* FirebaseAppCheck */,
+				7787779E2FFAB991003FE164 /* FirebaseAppDistribution-Beta */,
+				778777A02FFAB991003FE164 /* FirebaseAuth */,
+				778777A22FFAB991003FE164 /* FirebaseAuthCombine-Community */,
+				778777A42FFAB991003FE164 /* FirebaseCore */,
+				778777A62FFAB991003FE164 /* FirebaseCrashlytics */,
+				778777A82FFAB991003FE164 /* FirebaseDatabase */,
+				778777AA2FFAB991003FE164 /* FirebaseFirestore */,
+				778777AC2FFAB991003FE164 /* FirebaseFirestoreCombine-Community */,
+				778777AE2FFAB991003FE164 /* FirebaseFunctions */,
+				778777B02FFAB991003FE164 /* FirebaseFunctionsCombine-Community */,
+				778777B22FFAB991003FE164 /* FirebaseInAppMessaging-Beta */,
+				778777B42FFAB991003FE164 /* FirebaseInstallations */,
+				778777B62FFAB991003FE164 /* FirebaseMLModelDownloader */,
+				778777B82FFAB991003FE164 /* FirebaseMessaging */,
+				778777BA2FFAB991003FE164 /* FirebasePerformance */,
+				778777BC2FFAB991003FE164 /* FirebaseRemoteConfig */,
+				778777BE2FFAB991003FE164 /* FirebaseStorage */,
+				778777C02FFAB991003FE164 /* FirebaseStorageCombine-Community */,
+			);
+			productName = Peephole;
+			productReference = 778777312FFA85D9003FE164 /* Peephole.app */;
+			productType = "com.apple.product-type.application";
+		};
+		7787773D2FFA85DA003FE164 /* PeepholeTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 778777552FFA85DA003FE164 /* Build configuration list for PBXNativeTarget "PeepholeTests" */;
+			buildPhases = (
+				7787773A2FFA85DA003FE164 /* Sources */,
+				7787773B2FFA85DA003FE164 /* Frameworks */,
+				7787773C2FFA85DA003FE164 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				778777402FFA85DA003FE164 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				778777412FFA85DA003FE164 /* PeepholeTests */,
+			);
+			name = PeepholeTests;
+			packageProductDependencies = (
+				778777E62FFB4F1A003FE164 /* FirebaseAuth */,
+				778777EA2FFB4F1A003FE164 /* FirebaseFirestore */,
+				778777EC2FFB5012003FE164 /* FirebaseCore */,
+			);
+			productName = PeepholeTests;
+			productReference = 7787773E2FFA85DA003FE164 /* PeepholeTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		778777472FFA85DA003FE164 /* PeepholeUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 778777582FFA85DA003FE164 /* Build configuration list for PBXNativeTarget "PeepholeUITests" */;
+			buildPhases = (
+				778777442FFA85DA003FE164 /* Sources */,
+				778777452FFA85DA003FE164 /* Frameworks */,
+				778777462FFA85DA003FE164 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7787774A2FFA85DA003FE164 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				7787774B2FFA85DA003FE164 /* PeepholeUITests */,
+			);
+			name = PeepholeUITests;
+			packageProductDependencies = (
+			);
+			productName = PeepholeUITests;
+			productReference = 778777482FFA85DA003FE164 /* PeepholeUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		7787775E2FFA8639003FE164 /* PeepholeWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 778777732FFA863C003FE164 /* Build configuration list for PBXNativeTarget "PeepholeWidgetExtension" */;
+			buildPhases = (
+				7787775B2FFA8639003FE164 /* Sources */,
+				7787775C2FFA8639003FE164 /* Frameworks */,
+				7787775D2FFA8639003FE164 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				778777652FFA8639003FE164 /* PeepholeWidget */,
+			);
+			name = PeepholeWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = PeepholeWidgetExtension;
+			productReference = 7787775F2FFA8639003FE164 /* PeepholeWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		778777292FFA85D9003FE164 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2610;
+				LastUpgradeCheck = 2610;
+				TargetAttributes = {
+					778777302FFA85D9003FE164 = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+					7787773D2FFA85DA003FE164 = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = 778777302FFA85D9003FE164;
+					};
+					778777472FFA85DA003FE164 = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = 778777302FFA85D9003FE164;
+					};
+					7787775E2FFA8639003FE164 = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+				};
+			};
+			buildConfigurationList = 7787772C2FFA85D9003FE164 /* Build configuration list for PBXProject "Peephole" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 778777282FFA85D9003FE164;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 778777322FFA85D9003FE164 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				778777302FFA85D9003FE164 /* Peephole */,
+				7787773D2FFA85DA003FE164 /* PeepholeTests */,
+				778777472FFA85DA003FE164 /* PeepholeUITests */,
+				7787775E2FFA8639003FE164 /* PeepholeWidgetExtension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		7787772F2FFA85D9003FE164 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				778777902FFAB72E003FE164 /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7787773C2FFA85DA003FE164 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		778777462FFA85DA003FE164 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7787775D2FFA8639003FE164 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		7787772D2FFA85D9003FE164 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7787773A2FFA85DA003FE164 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		778777442FFA85DA003FE164 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7787775B2FFA8639003FE164 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		778777402FFA85DA003FE164 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 778777302FFA85D9003FE164 /* Peephole */;
+			targetProxy = 7787773F2FFA85DA003FE164 /* PBXContainerItemProxy */;
+		};
+		7787774A2FFA85DA003FE164 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 778777302FFA85D9003FE164 /* Peephole */;
+			targetProxy = 778777492FFA85DA003FE164 /* PBXContainerItemProxy */;
+		};
+		778777702FFA863C003FE164 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7787775E2FFA8639003FE164 /* PeepholeWidgetExtension */;
+			targetProxy = 7787776F2FFA863C003FE164 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		778777502FFA85DA003FE164 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 5B2NQ74986;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		778777512FFA85DA003FE164 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 5B2NQ74986;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		778777532FFA85DA003FE164 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Peephole/Peephole.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5B2NQ74986;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Peephole/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.takaoka.com.Peephole;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		778777542FFA85DA003FE164 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Peephole/Peephole.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5B2NQ74986;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Peephole/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.takaoka.com.Peephole;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		778777562FFA85DA003FE164 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5B2NQ74986;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.takaoka.com.PeepholeTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Peephole.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Peephole";
+			};
+			name = Debug;
+		};
+		778777572FFA85DA003FE164 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5B2NQ74986;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.takaoka.com.PeepholeTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Peephole.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Peephole";
+			};
+			name = Release;
+		};
+		778777592FFA85DA003FE164 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5B2NQ74986;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.takaoka.com.PeepholeUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Peephole;
+			};
+			name = Debug;
+		};
+		7787775A2FFA85DA003FE164 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5B2NQ74986;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.takaoka.com.PeepholeUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Peephole;
+			};
+			name = Release;
+		};
+		778777742FFA863C003FE164 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = PeepholeWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5B2NQ74986;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PeepholeWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PeepholeWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.takaoka.com.Peephole.PeepholeWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		778777752FFA863C003FE164 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = PeepholeWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5B2NQ74986;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PeepholeWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PeepholeWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.takaoka.com.Peephole.PeepholeWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		7787772C2FFA85D9003FE164 /* Build configuration list for PBXProject "Peephole" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				778777502FFA85DA003FE164 /* Debug */,
+				778777512FFA85DA003FE164 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		778777522FFA85DA003FE164 /* Build configuration list for PBXNativeTarget "Peephole" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				778777532FFA85DA003FE164 /* Debug */,
+				778777542FFA85DA003FE164 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		778777552FFA85DA003FE164 /* Build configuration list for PBXNativeTarget "PeepholeTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				778777562FFA85DA003FE164 /* Debug */,
+				778777572FFA85DA003FE164 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		778777582FFA85DA003FE164 /* Build configuration list for PBXNativeTarget "PeepholeUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				778777592FFA85DA003FE164 /* Debug */,
+				7787775A2FFA85DA003FE164 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		778777732FFA863C003FE164 /* Build configuration list for PBXNativeTarget "PeepholeWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				778777742FFA863C003FE164 /* Debug */,
+				778777752FFA863C003FE164 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.15.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		778777922FFAB991003FE164 /* FirebaseAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAI;
+		};
+		778777942FFAB991003FE164 /* FirebaseAILogic */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAILogic;
+		};
+		778777962FFAB991003FE164 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		778777982FFAB991003FE164 /* FirebaseAnalyticsCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsCore;
+		};
+		7787779A2FFAB991003FE164 /* FirebaseAnalyticsIdentitySupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsIdentitySupport;
+		};
+		7787779C2FFAB991003FE164 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
+		};
+		7787779E2FFAB991003FE164 /* FirebaseAppDistribution-Beta */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseAppDistribution-Beta";
+		};
+		778777A02FFAB991003FE164 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		778777A22FFAB991003FE164 /* FirebaseAuthCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseAuthCombine-Community";
+		};
+		778777A42FFAB991003FE164 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		778777A62FFAB991003FE164 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
+		778777A82FFAB991003FE164 /* FirebaseDatabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseDatabase;
+		};
+		778777AA2FFAB991003FE164 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		778777AC2FFAB991003FE164 /* FirebaseFirestoreCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseFirestoreCombine-Community";
+		};
+		778777AE2FFAB991003FE164 /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
+		};
+		778777B02FFAB991003FE164 /* FirebaseFunctionsCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseFunctionsCombine-Community";
+		};
+		778777B22FFAB991003FE164 /* FirebaseInAppMessaging-Beta */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseInAppMessaging-Beta";
+		};
+		778777B42FFAB991003FE164 /* FirebaseInstallations */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseInstallations;
+		};
+		778777B62FFAB991003FE164 /* FirebaseMLModelDownloader */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMLModelDownloader;
+		};
+		778777B82FFAB991003FE164 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		778777BA2FFAB991003FE164 /* FirebasePerformance */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebasePerformance;
+		};
+		778777BC2FFAB991003FE164 /* FirebaseRemoteConfig */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseRemoteConfig;
+		};
+		778777BE2FFAB991003FE164 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+		778777C02FFAB991003FE164 /* FirebaseStorageCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseStorageCombine-Community";
+		};
+		778777E62FFB4F1A003FE164 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		778777EA2FFB4F1A003FE164 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		778777EC2FFB5012003FE164 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 778777292FFA85D9003FE164 /* Project object */;
+}

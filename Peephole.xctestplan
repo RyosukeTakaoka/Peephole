@@ -1,0 +1,30 @@
+{
+  "configurations" : [
+    {
+      "id" : "3F3E3FA4-208C-43A2-AB42-3B34F469C055",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Peephole.xcodeproj",
+      "identifier" : "778777302FFA85D9003FE164",
+      "name" : "Peephole"
+    }
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Peephole.xcodeproj",
+        "identifier" : "7787773D2FFA85DA003FE164",
+        "name" : "PeepholeTests"
+      }
+    }
+  ],
+  "version" : 1
+}
