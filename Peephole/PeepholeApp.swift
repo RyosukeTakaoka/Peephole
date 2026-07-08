@@ -50,7 +50,8 @@ struct PeepholeApp: App {
 
     init() {
         print("🔵 [APP] PeepholeApp init() started")
-        // Initialize mock data for widget on first launch
+        // 【開発中】初回起動時のみモックデータを表示
+        // 実際の投稿を作成すると、ウィジェットは実データに切り替わります
         setupMockDataIfNeeded()
         print("✅ [APP] PeepholeApp init() completed")
     }
@@ -63,12 +64,12 @@ struct PeepholeApp: App {
     }
 
     private func setupMockDataIfNeeded() {
-        // Check if widget data already exists
+        // ウィジェットデータが存在しない場合のみ、初回起動時にモックデータを表示
+        // 投稿を作成すると、実データで上書きされます
         if SharedDataManager.loadWidgetData() == nil {
-            // Generate and save mock data
             let mockData = SharedDataManager.generateMockData()
             SharedDataManager.saveWidgetData(mockData)
-            print("📦 Mock data initialized for widget")
+            print("📦 Mock data initialized for widget (will be replaced by real data after first post)")
         }
     }
 }
@@ -78,6 +79,7 @@ struct PeepholeApp: App {
 struct RootView: View {
 
     @EnvironmentObject var authViewModel: AuthViewModel
+    @Environment(\.scenePhase) var scenePhase
 
     var body: some View {
         Group {
@@ -93,6 +95,28 @@ struct RootView: View {
                 WelcomeScreen()
                     .environmentObject(authViewModel)
             }
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            // フォアグラウンドに戻った時にウィジェットを更新
+            if newPhase == .active {
+                updateWidgetIfNeeded()
+            }
+        }
+        .onAppear {
+            // アプリ起動時にウィジェットを更新
+            updateWidgetIfNeeded()
+        }
+    }
+
+    /// ログイン済みの場合のみウィジェットを更新
+    private func updateWidgetIfNeeded() {
+        guard let userId = authViewModel.currentUserId else {
+            print("⚠️ [WIDGET] User not logged in, skipping widget update")
+            return
+        }
+
+        Task {
+            await WidgetDataUpdater.shared.updateWidgetWithFollowingPosts(userId: userId)
         }
     }
 }

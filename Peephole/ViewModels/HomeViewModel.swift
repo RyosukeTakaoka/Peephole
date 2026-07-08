@@ -60,17 +60,25 @@ class HomeViewModel: ObservableObject {
             // フォロー中のユーザーIDを取得
             let followingIds = try await followService.getFollowingIds(userId: userId)
 
-            if followingIds.isEmpty {
-                // フォローしているユーザーがいない場合
+            // 【TODO: 動作確認用の一時的な変更】
+            // 自分自身の投稿もタイムラインに表示する
+            // 本番環境では、フォロー中のユーザーの投稿のみを表示する設計に戻す
+            var targetUserIds = followingIds
+            if !targetUserIds.contains(userId) {
+                targetUserIds.append(userId)
+            }
+
+            if targetUserIds.isEmpty {
+                // フォローしているユーザーがいない場合（通常ありえない）
                 self.posts = []
                 self.hasLoadedAll = true
                 self.isLoading = false
                 return
             }
 
-            // フォロー中のユーザーの投稿を取得
+            // フォロー中のユーザー + 自分の投稿を取得
             let fetchedPosts = try await postService.getTimelinePosts(
-                userIds: followingIds,
+                userIds: targetUserIds,
                 limit: pageSize
             )
 
@@ -78,6 +86,11 @@ class HomeViewModel: ObservableObject {
             self.hasLoadedAll = fetchedPosts.count < pageSize
 
             print("✅ Timeline loaded: \(fetchedPosts.count) posts")
+
+            // タイムラインのデータをウィジェットにも反映
+            if !fetchedPosts.isEmpty {
+                WidgetDataUpdater.shared.updateWidgetWithTimelinePosts(firestorePosts: fetchedPosts)
+            }
 
         } catch {
             self.errorMessage = "タイムラインの読み込みに失敗しました: \(error.localizedDescription)"
@@ -102,16 +115,24 @@ class HomeViewModel: ObservableObject {
             // フォロー中のユーザーIDを取得
             let followingIds = try await followService.getFollowingIds(userId: userId)
 
-            if followingIds.isEmpty {
+            // 【TODO: 動作確認用の一時的な変更】
+            // 自分自身の投稿もタイムラインに表示する
+            // 本番環境では、フォロー中のユーザーの投稿のみを表示する設計に戻す
+            var targetUserIds = followingIds
+            if !targetUserIds.contains(userId) {
+                targetUserIds.append(userId)
+            }
+
+            if targetUserIds.isEmpty {
                 self.posts = []
                 self.hasLoadedAll = true
                 self.isRefreshing = false
                 return
             }
 
-            // 最新の投稿を取得
+            // フォロー中のユーザー + 自分の投稿を取得
             let fetchedPosts = try await postService.getTimelinePosts(
-                userIds: followingIds,
+                userIds: targetUserIds,
                 limit: pageSize
             )
 
@@ -119,6 +140,11 @@ class HomeViewModel: ObservableObject {
             self.hasLoadedAll = fetchedPosts.count < pageSize
 
             print("✅ Timeline refreshed: \(fetchedPosts.count) posts")
+
+            // タイムラインのデータをウィジェットにも反映
+            if !fetchedPosts.isEmpty {
+                WidgetDataUpdater.shared.updateWidgetWithTimelinePosts(firestorePosts: fetchedPosts)
+            }
 
         } catch {
             self.errorMessage = "タイムラインの更新に失敗しました"
@@ -143,13 +169,21 @@ class HomeViewModel: ObservableObject {
             // フォロー中のユーザーIDを取得
             let followingIds = try await followService.getFollowingIds(userId: userId)
 
+            // 【TODO: 動作確認用の一時的な変更】
+            // 自分自身の投稿もタイムラインに表示する
+            // 本番環境では、フォロー中のユーザーの投稿のみを表示する設計に戻す
+            var targetUserIds = followingIds
+            if !targetUserIds.contains(userId) {
+                targetUserIds.append(userId)
+            }
+
             // 現在の最後の投稿の日時を取得（ページネーション用）
             // 注: Firestoreのページネーションは簡易実装（startAfterを使った実装は将来的な拡張）
             let currentCount = posts.count
 
             // 追加の投稿を取得
             let fetchedPosts = try await postService.getTimelinePosts(
-                userIds: followingIds,
+                userIds: targetUserIds,
                 limit: pageSize + currentCount
             )
 

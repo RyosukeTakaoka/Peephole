@@ -119,6 +119,9 @@ class PostCreateViewModel: ObservableObject {
             uploadProgress = 1.0
             print("✅ Post created: \(postId)")
 
+            // ステップ5: ウィジェットデータを更新
+            await updateWidgetData(userId: currentUserId)
+
             // 成功: 状態をリセット
             postCreated = true
             resetForm()
@@ -194,6 +197,16 @@ class PostCreateViewModel: ObservableObject {
         self.errorMessage = message
         self.showError = true
         print("❌ Error: \(message)")
+    }
+
+    // MARK: - Widget Update
+
+    /// ウィジェットデータを更新（フォロー中のユーザーの投稿を含む）
+    /// - Parameter userId: 現在のユーザーID
+    private func updateWidgetData(userId: String) async {
+        // WidgetDataUpdater（本体アプリ専用）を使用
+        // フォロー中のユーザー + 自分の投稿をウィジェットに表示
+        await WidgetDataUpdater.shared.updateWidgetWithFollowingPosts(userId: userId)
     }
 
     // MARK: - Text Limits

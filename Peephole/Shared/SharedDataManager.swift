@@ -6,6 +6,9 @@
 //
 
 import Foundation
+#if !APPCLIP
+import WidgetKit
+#endif
 
 class SharedDataManager {
     // MARK: - App Group Configuration
@@ -63,6 +66,16 @@ class SharedDataManager {
             print("❌ Failed to load widget data: \(error)")
             return nil
         }
+    }
+
+    // MARK: - Widget Timeline Reload
+    /// ウィジェットの表示を更新（タイムラインをリロード）
+    /// 本体アプリ側から呼び出される
+    static func reloadWidget() {
+        #if !APPCLIP
+        WidgetCenter.shared.reloadAllTimelines()
+        print("✅ [WIDGET] Widget timeline reloaded")
+        #endif
     }
 
     // MARK: - Mock Data Generator (for development)
