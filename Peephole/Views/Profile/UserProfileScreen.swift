@@ -14,6 +14,7 @@ struct UserProfileScreen: View {
 
     @StateObject private var viewModel = UserProfileViewModel()
     @EnvironmentObject var authViewModel: AuthViewModel
+    @State private var showCancelConfirmation = false
 
     var body: some View {
         ZStack {
@@ -34,8 +35,13 @@ struct UserProfileScreen: View {
 
                         // フォローボタン
                         Button {
-                            Task {
-                                await viewModel.handleFollowButtonTapped()
+                            if viewModel.followStatus == .requestPending {
+                                // 誤タップ防止のため確認ダイアログを挟む
+                                showCancelConfirmation = true
+                            } else {
+                                Task {
+                                    await viewModel.handleFollowButtonTapped()
+                                }
                             }
                         } label: {
                             if viewModel.isFollowActionInProgress {
@@ -55,6 +61,14 @@ struct UserProfileScreen: View {
                         .cornerRadius(8)
                         .disabled(viewModel.isFollowActionInProgress)
                         .padding(.horizontal, 16)
+                        .confirmationDialog("リクエストを取り消しますか？", isPresented: $showCancelConfirmation) {
+                            Button("取り消す", role: .destructive) {
+                                Task {
+                                    await viewModel.handleFollowButtonTapped()
+                                }
+                            }
+                            Button("キャンセル", role: .cancel) {}
+                        }
 
                         // 投稿一覧
                         VStack(alignment: .leading, spacing: 12) {

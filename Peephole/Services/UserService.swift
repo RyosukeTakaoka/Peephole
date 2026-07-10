@@ -81,15 +81,18 @@ class UserService {
         displayName: String,
         email: String
     ) async throws {
+        // 検索の大文字小文字対策として、保存直前にも小文字化する（防御的二重化）
+        let normalizedUsername = username.lowercased()
+
         print("🔵 [USER] createUserProfile started")
         print("   - userId: \(userId)")
-        print("   - username: \(username)")
+        print("   - username: \(normalizedUsername)")
         print("   - displayName: \(displayName)")
         print("   - email: \(email)")
 
         // ユーザー名のバリデーション
         print("🔵 [USER] Validating username...")
-        guard isValidUsername(username) else {
+        guard isValidUsername(normalizedUsername) else {
             print("❌ [USER] Invalid username format")
             throw UserServiceError.invalidUsername
         }
@@ -98,7 +101,7 @@ class UserService {
         // ユーザー名の重複チェック
         print("🔵 [USER] Checking username duplicate...")
         do {
-            let isDuplicate = try await checkUsernameDuplicate(username)
+            let isDuplicate = try await checkUsernameDuplicate(normalizedUsername)
             if isDuplicate {
                 print("❌ [USER] Username already exists")
                 throw UserServiceError.usernameAlreadyExists
@@ -117,7 +120,7 @@ class UserService {
 
         let user = FirestoreUser(
             userId: userId,
-            username: username,
+            username: normalizedUsername,
             displayName: displayName,
             email: email,
             profileImageURL: nil,
@@ -221,8 +224,11 @@ class UserService {
     ///   - userId: ユーザーID
     ///   - newUsername: 新しいユーザー名
     func updateUsername(userId: String, newUsername: String) async throws {
+        // 検索の大文字小文字対策として小文字化する
+        let normalizedUsername = newUsername.lowercased()
+
         // ユーザー名のバリデーション
-        guard isValidUsername(newUsername) else {
+        guard isValidUsername(normalizedUsername) else {
             throw UserServiceError.invalidUsername
         }
 
@@ -230,12 +236,12 @@ class UserService {
         let currentUser = try await getUserProfile(userId: userId)
 
         // 同じユーザー名ならスキップ
-        if currentUser.username == newUsername {
+        if currentUser.username == normalizedUsername {
             return
         }
 
         // 重複チェック
-        let isDuplicate = try await checkUsernameDuplicate(newUsername)
+        let isDuplicate = try await checkUsernameDuplicate(normalizedUsername)
         if isDuplicate {
             throw UserServiceError.usernameAlreadyExists
         }
@@ -243,10 +249,10 @@ class UserService {
         // 更新
         do {
             try await usersCollection.document(userId).updateData([
-                "username": newUsername,
+                "username": normalizedUsername,
                 "updatedAt": FieldValue.serverTimestamp()
             ])
-            print("✅ Username updated: \(newUsername)")
+            print("✅ Username updated: \(normalizedUsername)")
         } catch {
             throw UserServiceError.unknown(error.localizedDescription)
         }
@@ -257,14 +263,26 @@ class UserService {
     /// - Parameter query: 検索クエリ
     /// - Returns: 検索結果のユーザー一覧
     func searchUsers(query: String) async throws -> [FirestoreUser] {
-        guard !query.isEmpty else { return [] }
+        // トリム → 先頭の@を除去 → 小文字化して正規化（大文字小文字・@有無を問わず検索できるようにする）
+        var normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if normalizedQuery.hasPrefix("@") {
+            normalizedQuery.removeFirst()
+        }
+        normalizedQuery = normalizedQuery.lowercased()
+
+        guard !normalizedQuery.isEmpty else {
+            print("⚠️ [USER] searchUsers: 空クエリのためスキップ")
+            return []
+        }
+
+        print("🔵 [USER] searchUsers: クエリ=\"\(normalizedQuery)\"")
 
         do {
             // ユーザー名の前方一致検索
             // Firestoreの制限により、部分一致検索は困難なため、前方一致のみ
             let querySnapshot = try await usersCollection
-                .whereField("username", isGreaterThanOrEqualTo: query)
-                .whereField("username", isLessThan: query + "\u{f8ff}") // Unicode最大値
+                .whereField("username", isGreaterThanOrEqualTo: normalizedQuery)
+                .whereField("username", isLessThan: normalizedQuery + "\u{f8ff}") // Unicode最大値
                 .limit(to: 20)
                 .getDocuments()
 
@@ -272,8 +290,10 @@ class UserService {
                 try document.data(as: FirestoreUser.self)
             }
 
+            print("✅ [USER] searchUsers: \(users.count)件取得")
             return users
         } catch {
+            print("❌ [USER] searchUsers失敗: \(error)")
             throw UserServiceError.unknown(error.localizedDescription)
         }
     }
@@ -310,7 +330,8 @@ class UserService {
     /// - 3文字以上
     /// - 英数字とアンダースコアのみ
     private func isValidUsername(_ username: String) -> Bool {
-        let usernameRegex = "^[a-zA-Z0-9_]{3,}$"
+        // 検索の大文字小文字対策のため、username は小文字のみを許可する
+        let usernameRegex = "^[a-z0-9_]{3,}$"
         let predicate = NSPredicate(format: "SELF MATCHES %@", usernameRegex)
         return predicate.evaluate(with: username)
     }

@@ -87,20 +87,25 @@ class FollowService {
     ///   - requesterId: リクエスト送信者のUID
     ///   - targetId: リクエスト受信者のUID
     func sendFollowRequest(from requesterId: String, to targetId: String) async throws {
+        print("🔵 [FOLLOW] フォローリクエスト送信を開始: \(requesterId) → \(targetId)")
+
         // 自分自身をフォローできないチェック
         guard requesterId != targetId else {
+            print("❌ [FOLLOW] 自分自身へのフォローリクエストは不可")
             throw FollowServiceError.cannotFollowSelf
         }
 
         // 既にフォロー関係が存在するかチェック
         let isFollowing = try await checkIfFollowing(followerId: requesterId, followingId: targetId)
         if isFollowing {
+            print("❌ [FOLLOW] 既にフォロー済み: \(requesterId) → \(targetId)")
             throw FollowServiceError.alreadyFollowing
         }
 
         // 既にリクエストが存在するかチェック
-        let existingRequest = try await checkExistingRequest(requesterId: requesterId, targetId: targetId)
-        if existingRequest != nil {
+        let hasPending = try await hasPendingRequest(from: requesterId, to: targetId)
+        if hasPending {
+            print("❌ [FOLLOW] 既にリクエスト送信済み: \(requesterId) → \(targetId)")
             throw FollowServiceError.requestAlreadyExists
         }
 
@@ -117,8 +122,9 @@ class FollowService {
 
         do {
             try newRequestRef.setData(from: request)
-            print("✅ Follow request sent: \(requesterId) → \(targetId)")
+            print("✅ [FOLLOW] フォローリクエスト送信成功: \(requesterId) → \(targetId), requestId: \(newRequestRef.documentID)")
         } catch {
+            print("❌ [FOLLOW] フォローリクエスト送信失敗: \(requesterId) → \(targetId), error: \(error)")
             throw FollowServiceError.unknown(error.localizedDescription)
         }
     }
@@ -130,6 +136,7 @@ class FollowService {
     ///   - requestId: フォローリクエストID
     ///   - currentUserId: 承認を実行するユーザーID（権限チェック用）
     func approveFollowRequest(requestId: String, currentUserId: String) async throws {
+        print("🔵 [FOLLOW] フォローリクエスト承認を開始: requestId=\(requestId), currentUserId=\(currentUserId)")
         do {
             try await db.runTransaction { (transaction, errorPointer) -> Any? in
                 // 1. フォローリクエストを取得
@@ -222,9 +229,10 @@ class FollowService {
                 return nil
             }
 
-            print("✅ Follow request approved: \(requestId)")
+            print("✅ [FOLLOW] フォローリクエスト承認成功: \(requestId)")
 
         } catch {
+            print("❌ [FOLLOW] フォローリクエスト承認失敗: \(requestId), error: \(error)")
             throw FollowServiceError.transactionFailed(error.localizedDescription)
         }
     }
@@ -235,27 +243,33 @@ class FollowService {
     ///   - requestId: フォローリクエストID
     ///   - currentUserId: 拒否を実行するユーザーID（権限チェック用）
     func rejectFollowRequest(requestId: String, currentUserId: String) async throws {
+        print("🔵 [FOLLOW] フォローリクエスト拒否を開始: requestId=\(requestId), currentUserId=\(currentUserId)")
+
         // リクエストを取得
         let requestSnapshot = try await followRequestsCollection.document(requestId).getDocument()
 
         guard requestSnapshot.exists else {
+            print("❌ [FOLLOW] リクエストが見つかりません: \(requestId)")
             throw FollowServiceError.requestNotFound
         }
 
         guard let request = try? requestSnapshot.data(as: FirestoreFollowRequest.self) else {
+            print("❌ [FOLLOW] リクエストデータが不正です: \(requestId)")
             throw FollowServiceError.unknown("リクエストデータが不正です")
         }
 
         // 権限チェック
         guard request.targetId == currentUserId else {
+            print("❌ [FOLLOW] 権限がありません: requestId=\(requestId), targetId=\(request.targetId), currentUserId=\(currentUserId)")
             throw FollowServiceError.unauthorizedOperation
         }
 
         // リクエストを削除
         do {
             try await followRequestsCollection.document(requestId).delete()
-            print("✅ Follow request rejected: \(requestId)")
+            print("✅ [FOLLOW] フォローリクエスト拒否成功: requestId=\(requestId), requesterId=\(request.requesterId)")
         } catch {
+            print("❌ [FOLLOW] フォローリクエスト拒否失敗: \(requestId), error: \(error)")
             throw FollowServiceError.unknown(error.localizedDescription)
         }
     }
@@ -353,6 +367,7 @@ class FollowService {
     /// - Parameter userId: ユーザーID
     /// - Returns: フォローリクエスト一覧
     func getPendingFollowRequests(targetId: String) async throws -> [FirestoreFollowRequest] {
+        print("🔵 [FOLLOW] getPendingFollowRequests: targetId=\(targetId), status=pending")
         do {
             let querySnapshot = try await followRequestsCollection
                 .whereField("targetId", isEqualTo: targetId)
@@ -363,6 +378,7 @@ class FollowService {
             let requests = try querySnapshot.documents.compactMap { document in
                 try document.data(as: FirestoreFollowRequest.self)
             }
+            print("✅ [FOLLOW] getPendingFollowRequests取得完了: \(requests.count)件")
 
             return requests
         } catch {
@@ -413,9 +429,11 @@ class FollowService {
         return !querySnapshot.documents.isEmpty
     }
 
-    // MARK: - Check Existing Request
-    /// 既存のフォローリクエストを確認
-    private func checkExistingRequest(requesterId: String, targetId: String) async throws -> FirestoreFollowRequest? {
+    // MARK: - Has Pending Request
+    /// 自分から相手への保留中リクエストが存在するか
+    /// - Note: セキュリティルール上「自分が当事者のリクエストのみ読める」ため、
+    ///   このメソッドのように requesterId==自分 のクエリを使うこと（targetId==相手 の全件取得は権限エラーになる）
+    func hasPendingRequest(from requesterId: String, to targetId: String) async throws -> Bool {
         let querySnapshot = try await followRequestsCollection
             .whereField("requesterId", isEqualTo: requesterId)
             .whereField("targetId", isEqualTo: targetId)
@@ -423,10 +441,8 @@ class FollowService {
             .limit(to: 1)
             .getDocuments()
 
-        guard let document = querySnapshot.documents.first else {
-            return nil
-        }
-
-        return try? document.data(as: FirestoreFollowRequest.self)
+        let result = !querySnapshot.documents.isEmpty
+        print("🔵 [FOLLOW] hasPendingRequest: \(requesterId) → \(targetId) = \(result)")
+        return result
     }
 }

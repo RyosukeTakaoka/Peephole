@@ -10,7 +10,8 @@ import SwiftUI
 
 struct NotificationsScreen: View {
 
-    @StateObject private var viewModel = NotificationsViewModel()
+    // MainTabViewが持つインスタンスをそのまま使う（バッジ表示と同期させるため別インスタンスにしない）
+    @EnvironmentObject var viewModel: NotificationsViewModel
     @EnvironmentObject var authViewModel: AuthViewModel
 
     var body: some View {
@@ -177,5 +178,6 @@ struct EmptyNotificationsView: View {
     NavigationStack {
         NotificationsScreen()
             .environmentObject(AuthViewModel())
+            .environmentObject(NotificationsViewModel())
     }
 }

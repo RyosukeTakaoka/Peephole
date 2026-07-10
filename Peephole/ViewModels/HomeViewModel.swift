@@ -60,9 +60,8 @@ class HomeViewModel: ObservableObject {
             // フォロー中のユーザーIDを取得
             let followingIds = try await followService.getFollowingIds(userId: userId)
 
-            // 【TODO: 動作確認用の一時的な変更】
-            // 自分自身の投稿もタイムラインに表示する
-            // 本番環境では、フォロー中のユーザーの投稿のみを表示する設計に戻す
+            // 仕様: 自分の投稿もホームに表示する（フォロー中ユーザーの投稿と合わせて折衷案として正式採用）
+            // ※ウィジェットには自分の投稿を流さないため、WidgetDataUpdater側でexcludingUserIdにより除外する
             var targetUserIds = followingIds
             if !targetUserIds.contains(userId) {
                 targetUserIds.append(userId)
@@ -87,9 +86,9 @@ class HomeViewModel: ObservableObject {
 
             print("✅ Timeline loaded: \(fetchedPosts.count) posts")
 
-            // タイムラインのデータをウィジェットにも反映
+            // タイムラインのデータをウィジェットにも反映（自分の投稿は除外）
             if !fetchedPosts.isEmpty {
-                await WidgetDataUpdater.shared.updateWidgetWithTimelinePosts(firestorePosts: fetchedPosts)
+                await WidgetDataUpdater.shared.updateWidgetWithTimelinePosts(firestorePosts: fetchedPosts, excludingUserId: userId)
             }
 
         } catch {
@@ -115,9 +114,8 @@ class HomeViewModel: ObservableObject {
             // フォロー中のユーザーIDを取得
             let followingIds = try await followService.getFollowingIds(userId: userId)
 
-            // 【TODO: 動作確認用の一時的な変更】
-            // 自分自身の投稿もタイムラインに表示する
-            // 本番環境では、フォロー中のユーザーの投稿のみを表示する設計に戻す
+            // 仕様: 自分の投稿もホームに表示する（フォロー中ユーザーの投稿と合わせて折衷案として正式採用）
+            // ※ウィジェットには自分の投稿を流さないため、WidgetDataUpdater側でexcludingUserIdにより除外する
             var targetUserIds = followingIds
             if !targetUserIds.contains(userId) {
                 targetUserIds.append(userId)
@@ -141,9 +139,9 @@ class HomeViewModel: ObservableObject {
 
             print("✅ Timeline refreshed: \(fetchedPosts.count) posts")
 
-            // タイムラインのデータをウィジェットにも反映
+            // タイムラインのデータをウィジェットにも反映（自分の投稿は除外）
             if !fetchedPosts.isEmpty {
-                await WidgetDataUpdater.shared.updateWidgetWithTimelinePosts(firestorePosts: fetchedPosts)
+                await WidgetDataUpdater.shared.updateWidgetWithTimelinePosts(firestorePosts: fetchedPosts, excludingUserId: userId)
             }
 
         } catch {
@@ -169,9 +167,7 @@ class HomeViewModel: ObservableObject {
             // フォロー中のユーザーIDを取得
             let followingIds = try await followService.getFollowingIds(userId: userId)
 
-            // 【TODO: 動作確認用の一時的な変更】
-            // 自分自身の投稿もタイムラインに表示する
-            // 本番環境では、フォロー中のユーザーの投稿のみを表示する設計に戻す
+            // 仕様: 自分の投稿もホームに表示する（フォロー中ユーザーの投稿と合わせて折衷案として正式採用）
             var targetUserIds = followingIds
             if !targetUserIds.contains(userId) {
                 targetUserIds.append(userId)

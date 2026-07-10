@@ -27,9 +27,9 @@ struct MainTabView: View {
             }
             .tag(0)
 
-            // 2. 発見（ユーザー検索）- 将来的な実装
+            // 2. 発見（ユーザー検索）
             NavigationStack {
-                DiscoverPlaceholderScreen()
+                DiscoverScreen()
             }
             .tabItem {
                 Label("発見", systemImage: selectedTab == 1 ? "magnifyingglass.circle.fill" : "magnifyingglass")
@@ -82,28 +82,6 @@ struct MainTabView: View {
                 await notificationsViewModel.loadFollowRequests(userId: userId)
             }
         }
-    }
-}
-
-// MARK: - Discover Placeholder Screen
-
-struct DiscoverPlaceholderScreen: View {
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "magnifyingglass.circle")
-                .font(.system(size: 60))
-                .foregroundColor(.gray)
-
-            Text("発見")
-                .font(.system(size: 24, weight: .bold))
-
-            Text("ユーザー検索機能は\n今後実装予定です")
-                .font(.system(size: 16))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .navigationTitle("発見")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

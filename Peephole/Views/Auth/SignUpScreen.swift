@@ -67,8 +67,8 @@ struct SignUpScreen: View {
                                     .autocapitalization(.none)
                                     .focused($focusedField, equals: .username)
                                     .onChange(of: username) { _, newValue in
-                                        // 英数字とアンダースコアのみ許可
-                                        username = newValue.filter { $0.isLetter || $0.isNumber || $0 == "_" }
+                                        // 英数字とアンダースコアのみ許可 + 検索の大文字小文字対策で小文字化
+                                        username = newValue.lowercased().filter { $0.isLetter || $0.isNumber || $0 == "_" }
                                     }
                             }
                             .padding(.vertical, 14)

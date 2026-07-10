@@ -136,8 +136,11 @@ class UserProfileViewModel: ObservableObject {
             }
 
             // リクエスト送信済みかチェック
-            let pendingRequests = try await followService.getPendingFollowRequests(targetId: targetUserId)
-            let hasRequestFromCurrentUser = pendingRequests.contains { $0.requesterId == currentUserId }
+            // 「自分から相手への」クエリを使う（相手宛の全件取得はセキュリティルール違反になるため使わない）
+            let hasRequestFromCurrentUser = try await followService.hasPendingRequest(
+                from: currentUserId,
+                to: targetUserId
+            )
 
             if hasRequestFromCurrentUser {
                 self.followStatus = .requestPending
@@ -189,9 +192,8 @@ class UserProfileViewModel: ObservableObject {
             await sendFollowRequest()
 
         case .requestPending:
-            // リクエストをキャンセル（実装は省略、将来的な拡張）
-            // 現状では何もしない
-            break
+            // リクエストをキャンセル
+            await cancelFollowRequest()
 
         case .following:
             // フォロー解除
@@ -220,6 +222,28 @@ class UserProfileViewModel: ObservableObject {
             self.errorMessage = "フォローリクエストの送信に失敗しました"
             self.showError = true
             print("❌ Failed to send follow request: \(error)")
+        }
+    }
+
+    /// 送信済みフォローリクエストをキャンセル
+    private func cancelFollowRequest() async {
+        guard let targetUserId = targetUserId,
+              let currentUserId = currentUserId else { return }
+
+        do {
+            try await followService.cancelFollowRequest(
+                requesterId: currentUserId,
+                targetId: targetUserId
+            )
+
+            self.followStatus = .notFollowing
+
+            print("✅ Follow request cancelled")
+
+        } catch {
+            self.errorMessage = "リクエストの取り消しに失敗しました"
+            self.showError = true
+            print("❌ Failed to cancel follow request: \(error)")
         }
     }
 
