@@ -89,7 +89,7 @@ class HomeViewModel: ObservableObject {
 
             // タイムラインのデータをウィジェットにも反映
             if !fetchedPosts.isEmpty {
-                WidgetDataUpdater.shared.updateWidgetWithTimelinePosts(firestorePosts: fetchedPosts)
+                await WidgetDataUpdater.shared.updateWidgetWithTimelinePosts(firestorePosts: fetchedPosts)
             }
 
         } catch {
@@ -143,7 +143,7 @@ class HomeViewModel: ObservableObject {
 
             // タイムラインのデータをウィジェットにも反映
             if !fetchedPosts.isEmpty {
-                WidgetDataUpdater.shared.updateWidgetWithTimelinePosts(firestorePosts: fetchedPosts)
+                await WidgetDataUpdater.shared.updateWidgetWithTimelinePosts(firestorePosts: fetchedPosts)
             }
 
         } catch {

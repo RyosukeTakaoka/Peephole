@@ -110,6 +110,7 @@
 			membershipExceptions = (
 				Models/Models.swift,
 				Shared/SharedDataManager.swift,
+				Shared/WidgetImageStore.swift,
 			);
 			target = 7787775E2FFA8639003FE164 /* PeepholeWidgetExtension */;
 		};

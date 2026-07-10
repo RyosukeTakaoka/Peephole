@@ -30,26 +30,12 @@ struct PostCardView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .bottomLeading) {
-                // Background image
-                AsyncImage(url: URL(string: post.imageURL)) { phase in
-                    switch phase {
-                    case .empty:
-                        Color.gray.opacity(0.3)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: geometry.size.width, height: geometry.size.height)
-                    case .failure:
-                        Color.gray.opacity(0.3)
-                            .overlay(
-                                Image(systemName: "photo")
-                                    .foregroundColor(.white)
-                            )
-                    @unknown default:
-                        Color.gray.opacity(0.3)
-                    }
-                }
+                // Background image（App Group共有コンテナからローカル読み込み）
+                WidgetLocalBackgroundImageView(
+                    fileName: post.localImageFileName,
+                    width: geometry.size.width,
+                    height: geometry.size.height
+                )
                 .clipped()
 
                 // Gradient overlay
@@ -66,19 +52,11 @@ struct PostCardView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     // User info
                     HStack(spacing: 4) {
-                        if let profileURL = post.userProfileImageURL {
-                            AsyncImage(url: URL(string: profileURL)) { phase in
-                                if let image = phase.image {
-                                    image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                } else {
-                                    Circle()
-                                        .fill(Color.white.opacity(0.3))
-                                }
-                            }
-                            .frame(width: 16, height: 16)
-                            .clipShape(Circle())
+                        if post.userProfileImageURL != nil {
+                            WidgetLocalProfileImageView(
+                                fileName: post.localProfileImageFileName,
+                                size: 16
+                            )
                         }
 
                         Text(post.userDisplayName)

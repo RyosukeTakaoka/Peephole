@@ -47,6 +47,11 @@ struct Post: Codable, Identifiable {
     let userDisplayName: String
     let userProfileImageURL: String?
 
+    // ウィジェット用にローカル保存された画像ファイル名（App Group共有コンテナ内）
+    // 旧バージョンのwidgetData.jsonとの互換性のため必ずOptionalにする
+    let localImageFileName: String?
+    let localProfileImageFileName: String?
+
     init(id: String,
          userId: String,
          imageURL: String,
@@ -55,7 +60,9 @@ struct Post: Codable, Identifiable {
          createdAt: Date,
          userName: String,
          userDisplayName: String,
-         userProfileImageURL: String? = nil) {
+         userProfileImageURL: String? = nil,
+         localImageFileName: String? = nil,
+         localProfileImageFileName: String? = nil) {
         self.id = id
         self.userId = userId
         self.imageURL = imageURL
@@ -65,6 +72,8 @@ struct Post: Codable, Identifiable {
         self.userName = userName
         self.userDisplayName = userDisplayName
         self.userProfileImageURL = userProfileImageURL
+        self.localImageFileName = localImageFileName
+        self.localProfileImageFileName = localProfileImageFileName
     }
 }
 

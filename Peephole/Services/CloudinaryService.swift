@@ -197,6 +197,31 @@ class CloudinaryService {
         return transformedURL
     }
 
+    // MARK: - Generate Widget Image URL
+    /// ウィジェット用画像のダウンロードURLを生成（JPEG固定）
+    /// - Note: `f_auto` はAccept次第でAVIF/WebPを返すことがあり、ウィジェット側の
+    ///   `UIImage(contentsOfFile:)` でのデコード互換性が崩れるため、必ず `f_jpg` に固定する。
+    ///   必ずオリジナルURL（変換パラメータの入っていないURL）から生成すること。
+    ///   thumbnailURL等の変換済みURLに対して呼ぶと多段変換URLになり挙動が読めなくなる。
+    static func generateWidgetImageURL(
+        from originalURL: String,
+        size: Int = 400
+    ) -> String {
+        guard originalURL.contains("cloudinary.com/"),
+              let uploadRange = originalURL.range(of: "/upload/") else {
+            print("⚠️ [IMAGE] Cloudinary以外のURLのためウィジェット用URL変換をスキップ: \(originalURL)")
+            return originalURL
+        }
+
+        let transformations = "w_\(size),h_\(size),c_fill,q_auto,f_jpg"
+        let insertIndex = uploadRange.upperBound
+        var transformedURL = originalURL
+        transformedURL.insert(contentsOf: transformations + "/", at: insertIndex)
+
+        print("🔵 [IMAGE] ウィジェット用URL生成: \(transformedURL)")
+        return transformedURL
+    }
+
     // MARK: - Generate Profile Image URL
     /// プロフィール画像のURL（顔認識クロップ付き）
     static func generateProfileImageURL(

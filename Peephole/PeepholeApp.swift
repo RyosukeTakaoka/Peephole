@@ -50,9 +50,6 @@ struct PeepholeApp: App {
 
     init() {
         print("🔵 [APP] PeepholeApp init() started")
-        // 【開発中】初回起動時のみモックデータを表示
-        // 実際の投稿を作成すると、ウィジェットは実データに切り替わります
-        setupMockDataIfNeeded()
         print("✅ [APP] PeepholeApp init() completed")
     }
 
@@ -60,16 +57,6 @@ struct PeepholeApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(authViewModel)
-        }
-    }
-
-    private func setupMockDataIfNeeded() {
-        // ウィジェットデータが存在しない場合のみ、初回起動時にモックデータを表示
-        // 投稿を作成すると、実データで上書きされます
-        if SharedDataManager.loadWidgetData() == nil {
-            let mockData = SharedDataManager.generateMockData()
-            SharedDataManager.saveWidgetData(mockData)
-            print("📦 Mock data initialized for widget (will be replaced by real data after first post)")
         }
     }
 }

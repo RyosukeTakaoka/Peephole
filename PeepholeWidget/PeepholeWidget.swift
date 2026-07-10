@@ -54,10 +54,10 @@ struct PeepholeWidgetProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<PeepholeWidgetEntry>) -> Void) {
         // Load data from shared container
-        let data = SharedDataManager.loadWidgetData() ?? SharedDataManager.generateMockData()
-
-        guard !data.posts.isEmpty else {
-            // If no posts, show empty state
+        // 未ログイン・初回起動時などデータが無い場合は、モックではなく「投稿がありません」を表示する
+        // （モックはリモートURLしか持たないため、新方式では永遠に灰色になり紛らわしい）
+        guard let data = SharedDataManager.loadWidgetData(), !data.posts.isEmpty else {
+            print("⚠️ [WIDGET] widgetData.jsonが無い、または投稿が空のため空状態を表示します")
             let entry = PeepholeWidgetEntry(date: Date(), posts: [], displayIndex: 0)
             let timeline = Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(30 * 60)))
             completion(timeline)
