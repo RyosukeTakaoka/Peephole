@@ -240,35 +240,86 @@ Firebase コンソール → Firestore Database → ルール → 「Rules Playg
 
 ---
 
-## 6. posts（isHidden 条件が無効化されていることの確認）
+## 6. posts（isHidden 条件・T14 で有効化）
 
-### 6-1. isHidden フィールドを含まない投稿作成 → 許可されるか
+**前提**: 以下のケースは、既存 posts 全ドキュメントへの `isHidden: false` バックフィルが
+コンソールで完了していることを前提とする。バックフィル未実施の状態で 6-5 以降の
+update 系ケースを実行すると、既存ドキュメントに `isHidden` フィールドが無いために
+意図せず拒否される（フィールド未定義参照によるエラー）。
+
+### 6-1. isHidden: false を明示した投稿作成 → 許可されるか
 
 - 認証 UID: `userA`
 - 操作種別: `create`
 - パス: `/posts/{任意のドキュメントID}`
-- 送信データ: `{ postId: "p1", userId: "userA", imageURL: "https://...", thumbnailURL: "https://...", text: "test", createdAt: (timestamp), updatedAt: (timestamp), expiresAt: (timestamp), isExpired: false }`（isHidden フィールドなし）
+- 送信データ: `{ postId: "p1", userId: "userA", imageURL: "https://...", thumbnailURL: "https://...", text: "test", createdAt: (timestamp), updatedAt: (timestamp), expiresAt: (timestamp), isExpired: false, isHidden: false }`
 - 期待結果: **許可**
-- 検証内容: T18 時点では posts.isHidden の強制が無効化されているため、既存の PostService.createPost（isHidden を書き込まない）が引き続き動作することを確認する。T14 実装後に isHidden 条件を有効化した際は、このケースが拒否に変わるはずなので、その回帰確認にも再利用できる。
+- 検証内容: T14 実装後の `PostService.createPost`（`isHidden: false` を書き込む）が引き続き動作することを確認する。
 
-### 6-2. 他人になりすました投稿作成（userId ≠ 自分） → 拒否されるか
+### 6-2. isHidden フィールドを省略した投稿作成 → 拒否されるか
+
+- 認証 UID: `userA`
+- 操作種別: `create`
+- パス: `/posts/{任意のドキュメントID}`
+- 送信データ: `{ postId: "p2", userId: "userA", imageURL: "https://...", thumbnailURL: "https://...", text: "test", createdAt: (timestamp), updatedAt: (timestamp), expiresAt: (timestamp), isExpired: false }`（isHidden フィールドなし）
+- 期待結果: **拒否**
+- 検証内容: `request.resource.data.isHidden == false` の評価がフィールド未定義で失敗し、isHidden を省略した投稿作成が拒否されることを確認する。
+
+### 6-3. isHidden: true を指定した投稿作成（自己での最初からの隠蔽） → 拒否されるか
+
+- 認証 UID: `userA`
+- 操作種別: `create`
+- パス: `/posts/{任意のドキュメントID}`
+- 送信データ: `{ postId: "p3", userId: "userA", ..., isHidden: true }`
+- 期待結果: **拒否**
+- 検証内容: クライアントが最初から `isHidden: true` で投稿を作成することはできないことを確認する（`isHidden` は運営専用フラグであるという原則の入口側の検証）。
+
+### 6-4. 他人になりすました投稿作成（userId ≠ 自分） → 拒否されるか
 
 - 認証 UID: `userB`
 - 操作種別: `create`
 - パス: `/posts/{任意のドキュメントID}`
-- 送信データ: `{ postId: "p2", userId: "userA", ... }`
+- 送信データ: `{ postId: "p4", userId: "userA", ..., isHidden: false }`
 - 期待結果: **拒否**
-- 検証内容: `request.auth.uid == request.resource.data.userId` により、他人になりすました投稿作成ができないことを確認する（isHidden 条件とは独立して機能していることの確認）。
+- 検証内容: `request.auth.uid == request.resource.data.userId` により、isHidden 条件とは独立して、他人になりすました投稿作成が引き続き拒否されることを確認する。
 
-### 6-3. 投稿者本人による投稿テキストの更新 → 許可されるか
+### 6-5. 投稿者本人による、isHidden以外のフィールド更新（isHiddenは変更なし） → 許可されるか
 
 - 認証 UID: `userA`
 - 操作種別: `update`
 - パス: `/posts/p1`
-- 既存ドキュメント: `{ userId: "userA", text: "元のテキスト", ... }`（isHidden フィールドなし）
-- 送信データ: `{ userId: "userA", text: "更新後のテキスト", ... }`
+- 既存ドキュメント: `{ userId: "userA", text: "元のテキスト", isHidden: false, ... }`
+- 送信データ: `{ userId: "userA", text: "更新後のテキスト", isHidden: false, ... }`
 - 期待結果: **許可**
-- 検証内容: isHidden フィールドが存在しない既存ドキュメントに対しても、投稿者本人による更新がエラーなく許可されることを確認する（isHidden 条件を無効化した理由の裏付け：もし有効化していた場合、フィールド未定義参照でここが拒否されてしまう）。
+- 検証内容: バックフィル済みの既存ドキュメントに対して、isHidden を変更しない限り投稿者本人による更新が引き続き許可されることを確認する。
+
+### 6-6. 投稿者本人による isHidden の自己変更（true への変更） → 拒否されるか
+
+- 認証 UID: `userA`
+- 操作種別: `update`
+- パス: `/posts/p1`
+- 既存ドキュメント: `{ userId: "userA", text: "元のテキスト", isHidden: false, ... }`
+- 送信データ: `{ userId: "userA", text: "元のテキスト", isHidden: true, ... }`
+- 期待結果: **拒否**
+- 検証内容: `request.resource.data.isHidden == resource.data.isHidden` により、投稿者自身が isHidden を書き換えることはできないことを確認する。
+
+### 6-7. 投稿者本人による isHidden の自己解除（true → false への変更） → 拒否されるか
+
+- 認証 UID: `userA`
+- 操作種別: `update`
+- パス: `/posts/p1`
+- 既存ドキュメント: `{ userId: "userA", text: "元のテキスト", isHidden: true, ... }`（運営がコンソールで非表示化した想定）
+- 送信データ: `{ userId: "userA", text: "元のテキスト", isHidden: false, ... }`
+- 期待結果: **拒否**
+- 検証内容: 運営が非表示化した投稿を、投稿者が API 直叩きで自己解除できないことを確認する（T14 の isHidden 条項の主目的）。
+
+### 6-8. isHidden: true の投稿の読み取り → 許可されるか（既知の割り切り）
+
+- 認証 UID: `userB`（投稿者本人でなくてもよい）
+- 操作種別: `get`（読み取り）
+- パス: `/posts/{isHidden: true の投稿ID}`
+- 期待結果: **許可**
+- 検証内容: posts の read ルールは isHidden を条件にしていない（`allow read: if signedIn()` のまま）ため、ドキュメントIDを直接指定した取得は isHidden の値に関わらず可能であることを確認する。タイムライン・プロフィール・ウィジェットからの除外は `whereField("isHidden", isEqualTo: false)` というアプリ側のクエリ条件で行っており、ルールレベルでの読み取り遮断ではない点を把握しておく（既知の割り切り。将来的な改善余地）。
 
 ---
 
@@ -279,6 +330,6 @@ Firebase コンソール → Firestore Database → ルール → 「Rules Playg
 - [ ] 3-1 〜 3-3（users 削除）
 - [ ] 4-1 〜 4-7（blocks）
 - [ ] 5-1 〜 5-4（reports）
-- [ ] 6-1 〜 6-3（posts / isHidden 無効化の確認）
+- [ ] 6-1 〜 6-8（posts / isHidden 有効化の確認。既存 posts のバックフィル完了が前提）
 
 すべて期待結果と一致すればコンソールへの本適用に進んでください。想定と異なる結果が出た場合は、該当ケースの番号とPlaygroundの実際の結果（許可/拒否とエラーメッセージ）を控えて共有してください。

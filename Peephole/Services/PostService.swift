@@ -24,6 +24,7 @@ struct FirestorePost: Codable, Identifiable {
     let updatedAt: Date
     let expiresAt: Date?
     let isExpired: Bool
+    let isHidden: Bool
 
     // Identifiable準拠のため、postIdをidとして使用
     var id: String { postId }
@@ -119,7 +120,8 @@ class PostService {
             createdAt: Date(),
             updatedAt: Date(),
             expiresAt: nil, // 将来的に24時間後の日時を設定
-            isExpired: false
+            isExpired: false,
+            isHidden: false
         )
 
         do {
@@ -171,6 +173,7 @@ class PostService {
             let querySnapshot = try await postsCollection
                 .whereField("userId", isEqualTo: userId)
                 .whereField("isExpired", isEqualTo: false)
+                .whereField("isHidden", isEqualTo: false)
                 .order(by: "createdAt", descending: true)
                 .limit(to: limit)
                 .getDocuments()
@@ -201,6 +204,7 @@ class PostService {
             let querySnapshot = try await postsCollection
                 .whereField("userId", in: limitedUserIds)
                 .whereField("isExpired", isEqualTo: false)
+                .whereField("isHidden", isEqualTo: false)
                 .order(by: "createdAt", descending: true)
                 .limit(to: limit)
                 .getDocuments()

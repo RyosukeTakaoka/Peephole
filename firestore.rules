@@ -1,18 +1,15 @@
 // Peephole Firestore セキュリティルール
 //
-// 出典: docs/review-fix-design.md §6.4（ルールセット全文）
-// 適用タスク: T18（Firestore セキュリティルール適用。脆弱性 A の修正含む）
+// 出典: docs/review-fix-design.md §6.4（ルールセット全文）、§6.3（T20 強化版）
+// 適用タスク: T18（Firestore セキュリティルール適用。脆弱性 A の修正含む）、
+//             T14（posts.isHidden 条項の有効化）
 //
-// 注記（T18 時点での既知の一時的な逸脱）:
-//   posts.isHidden に関する制約（作成時 false 強制 / クライアントからの変更禁止）は
-//   §6.4 の設計上は本ルールに含まれる想定だが、現行の PostService.createPost /
-//   FirestorePost は isHidden フィールドをまだ書き込まない（T14 で対応予定）。
-//   isHidden を先に強制すると、既存の投稿作成・更新が全件拒否されてしまうため、
-//   T18 時点では isHidden に関する条件を無効化している（該当箇所に TODO(T14) を記載）。
-//   T14 実装時に、posts の create / update ルールへ isHidden 条件を追加すること。
+// posts.isHidden 条項は T14 で有効化済み。適用前提として、既存 posts 全ドキュメントへの
+// isHidden: false バックフィルが完了していること（未バックフィルのドキュメントが残っていると
+// update ルールが未定義フィールド参照で評価エラー＝拒否になる）。
 //
-// followRequests / follows は T18 時点では現行のまま（複合 ID 化・exists() 検証による
-// 強化は T20 で別途対応する）。
+// followRequests / follows は T18 時点では現行のまま。複合 ID 化・exists() 検証による
+// 強化（§6.3）は T20 で適用する。
 
 rules_version = '2';
 service cloud.firestore {
@@ -57,19 +54,19 @@ service cloud.firestore {
     }
 
     // ===== posts =====
+    // T14 で isHidden 条項を有効化済み。
+    // 前提: 既存の posts 全ドキュメントに isHidden: false のバックフィルが完了していること
+    // （未バックフィルのドキュメントが残っていると、下記 update ルールが
+    // resource.data.isHidden の未定義参照で評価エラー＝拒否になる）。
     match /posts/{postId} {
       // 開発段階: 認証済みなら読み取り可（鍵アカ制御はアプリ側ロジック。現状維持）
       allow read: if signedIn();
-      // TODO(T14): isHidden フィールド導入後、以下を条件に追加する:
-      //   && request.resource.data.isHidden == false
-      // T18 時点では PostService が isHidden を書き込まないため無効化している。
-      allow create: if signedIn() && request.auth.uid == request.resource.data.userId;
-      // TODO(T14): isHidden フィールド導入後、以下を条件に追加する
-      // （投稿者による isHidden の自己解除を防ぐ）:
-      //   && request.resource.data.isHidden == resource.data.isHidden
-      // T18 時点では既存ドキュメントに isHidden が存在せず、フィールド未定義参照で
-      // 評価エラー（＝拒否）になってしまうため無効化している。
-      allow update: if signedIn() && request.auth.uid == resource.data.userId;
+      // isHidden はクライアントからは常に false でのみ作成可能
+      allow create: if signedIn() && request.auth.uid == request.resource.data.userId
+        && request.resource.data.isHidden == false;
+      // isHidden は運営専用（コンソール / Admin SDK はルール対象外）。投稿者による自己解除を防ぐ
+      allow update: if signedIn() && request.auth.uid == resource.data.userId
+        && request.resource.data.isHidden == resource.data.isHidden;
       allow delete: if signedIn() && request.auth.uid == resource.data.userId;
     }
 
