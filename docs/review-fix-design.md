@@ -2,6 +2,7 @@
 
 - 作成日: 2026-07-15
 - 最終更新: 2026-07-15（要確認事項 #3 の回答を反映: EULA は Apple 標準 LAEULA を使用、ゼロトレランス条項はアプリ内利用規約に明記）
+- 最終更新: 2026-07-15（要確認事項 #1/#2/#4 の回答を反映: **Blaze 非承認前提**で開発者通知とアカウント削除を再設計、Firestore セキュリティルール設計を §6 に追加（脆弱性 A の修正を含む）、Blaze の推奨判断と費用試算を §7 に追加。旧 §6/§7 は §8/§9 に繰り下げ）
 - 対象リジェクト: Guideline 1.2（UGC対策）/ 5.1.1(v)（アカウント削除）/ 2.1(a)（iPadボタン無反応）/ 2.1(a)（スクリーンショット）
 - 本ドキュメントは設計のみを記述する。実装コードは含まない。
 
@@ -77,7 +78,7 @@ Apple の要求 5 点（EULA / フィルタリング / 通報 / ブロック / 2
 
 - クライアント: 同意ゲート、通報・ブロック UI、NG ワードフィルタ、フィード/ウィジェットからの即時除外
 - Firestore: `blocks` / `reports` コレクション追加、`users` に同意記録フィールド追加、`posts` に `isHidden` 追加
-- バックエンド（Firebase）: Cloud Functions で通報/ブロック発生時に開発者へメール通知（24時間対応フローの起点）。Cloudinary 側で画像モデレーション（アップロードプリセット設定、コード変更なし）
+- バックエンド: **Blaze プランは使用しない（要確認事項 #1 の回答）**。Cloud Functions の代わりに、開発者通知は GitHub Actions の定期実行スクリプトで実現する（§2.5）。画像の自動モデレーションは初回リリースでは見送り、「テキスト NG ワード + 通報 + 24時間以内の人的対応」を主軸にする（§2.4）
 
 すべての新規 Service は既存規約（シングルトン、`FirestoreXxx` モデル同居、`XxxServiceError`、日本語コメント + `// MARK:` 構成、絵文字付き print ログ）に従う。
 
@@ -137,18 +138,19 @@ users/{userId}
 #### データモデル（新規コレクション blocks）
 
 ```
-blocks/{blockId}
-  blockId: String       // ドキュメントID（follows と同じ採番方式）
+blocks/{blockId}        // ドキュメントID = "{blockerId}_{blockedId}"（複合ID）
+  blockId: String
   blockerId: String     // ブロックした人
   blockedId: String     // ブロックされた人
   createdAt: Timestamp
+  notified: Bool        // 開発者通知済みフラグ（作成時 false、通知スクリプトが Admin SDK で true に更新）
 ```
 
-`FirestoreFollow` と同型の struct を `BlockService.swift` に定義する。
+struct は `BlockService.swift` に定義する。ドキュメント ID を複合 ID にする理由: ①同一ペアの二重ブロックが ID 衝突として自然に防げる、②セキュリティルールから `exists()` でブロック関係を検証できる（§6.3）、③クライアントが ID 直指定の `getDocument` で低コストに存在確認できる。
 
 #### blockUser のトランザクション内容
 
-1. `blocks` に新規ドキュメント作成
+1. `blocks` に複合 ID（`{blockerId}_{blockedId}`）で新規ドキュメント作成（`notified: false` を含む）
 2. `follows` から `blocker→blocked` / `blocked→blocker` の両方向を検索して削除（存在するもののみ。事前クエリはトランザクション外、削除はトランザクション内 — 既存 `unfollow` と同じ構成）
 3. 削除したフォロー関係に応じて両者の `followersCount` / `followingCount` を減算
 4. `followRequests` の双方向 pending リクエストを削除
@@ -157,7 +159,8 @@ blocks/{blockId}
 
 - ブロックした側: タイムライン・ウィジェットから対象の投稿が即時消える。対象のプロフィールでは投稿非表示。
 - ブロックされた側: フォロー関係が消えるため相手の投稿が見えなくなる。フォローリクエスト送信不可（`.blocked` エラー。ただし UI 上は「ブロックされている」と明示しない文言にする）。
-- 開発者通知: `blocks` ドキュメント作成を Cloud Functions トリガーで検知しメール送信（2.5 参照）。
+- 開発者通知: `blocks` の未通知ドキュメント（`notified == false`）を GitHub Actions の定期スクリプトが検知しメール送信（§2.5 参照）。
+- フォローリクエスト一覧の防御: `NotificationsViewModel.loadFollowRequests` で、自分がブロックしたユーザーからの pending リクエストを除外して表示する（ブロック前に送信済みだったリクエストへの対処）。
 
 ### 2.3 通報機能
 
@@ -185,6 +188,7 @@ reports/{reportId}
   reason: String                     // ReportReason の rawValue
   detail: String?                    // 任意の補足（最大500文字）
   status: String                     // "pending" | "reviewed" | "actioned"（作成時は "pending"）
+  notified: Bool                     // 開発者通知済みフラグ（作成時 false、通知スクリプトが Admin SDK で true に更新）
   createdAt: Timestamp
 
 users/{userId}/hiddenPosts/{postId}  // 通報者ローカルの非表示リスト（端末をまたいで有効）
@@ -215,11 +219,12 @@ ReportReason（enum, String, CaseIterable, Codable）
 | `Peephole/ViewModels/PostCreateViewModel.swift` | 変更 | `createPost` のバリデーションに NG ワードチェックを追加。ヒット時は `showErrorMessage("不適切な表現が含まれているため投稿できません")` で中断 |
 | `Peephole/ViewModels/ProfileViewModel.swift` | 変更 | `updateProfile` 前に displayName / bio に同チェック |
 
-#### (b) 画像: Cloudinary モデレーション（バックエンド設定 + posts.isHidden）
+#### (b) 画像: 運営非表示フラグ posts.isHidden（自動モデレーションは見送り）
 
-- Cloudinary の upload preset `peephole_posts` に moderation（AWS Rekognition アドオン等）を設定（**Cloudinary コンソールでの設定作業。アプリコード変更なし**）。
-- モデレーション結果 rejected の Webhook を Cloud Functions（HTTPS 関数）で受け、該当 `posts` ドキュメントの `isHidden` を true に更新。
-- `FirestorePost` に `isHidden: Bool` を追加し、`getUserPosts` / `getTimelinePosts` のクエリに `whereField("isHidden", isEqualTo: false)` を追加。
+- **Blaze 非承認（要確認事項 #1）により Webhook 受け口（Cloud Functions HTTPS 関数）を持てないため、画像の自動モデレーションは初回リリースでは見送りで確定**。画像への対策は「通報 + 24時間以内の人的対応（isHidden 化 / 削除）」で担保し、App Review への回答でもその運用を説明する。
+- 補助運用（任意・コード変更なし）: Cloudinary の upload preset `peephole_posts` に手動モデレーション（moderation=manual）を設定すると、Cloudinary コンソールのモデレーションキューで新着画像を目視確認できる。
+- `FirestorePost` に `isHidden: Bool` を追加し、`getUserPosts` / `getTimelinePosts` のクエリに `whereField("isHidden", isEqualTo: false)` を追加。`isHidden` の true 化は運営（Firebase コンソール = セキュリティルール対象外）のみが行い、クライアントからは変更不可とする（§6.2）。
+- 将来 Blaze へ移行した場合は、AWS Rekognition アドオン + Webhook → Functions で isHidden を自動更新する構成に拡張できる。
 
 ```
 posts/{postId}
@@ -231,14 +236,28 @@ posts/{postId}
 - 複合インデックス追加が必要: `posts` に対し `(userId, isExpired, isHidden, createdAt desc)` 相当。Firestore コンソールのエラーリンクから作成する。
 - 運営（開発者）が通報対応で投稿を非表示にする手段としても `isHidden` を使う（Firebase コンソールから手動更新）。
 
-### 2.5 24時間以内の対応フロー + 開発者通知
+### 2.5 24時間以内の対応フロー + 開発者通知（Blaze なし設計）
+
+Blaze 非承認（要確認事項 #1）のため Cloud Functions は使わない。代替案を比較し、**GitHub Actions の定期実行スクリプトによるメール通知**を採用する。
+
+#### 代替案の比較（Apple 審査基準への適合性評価）
+
+| 案 | 内容 | Apple 審査基準（Guideline 1.2）の充足 | セキュリティ・運用 | 判定 |
+|---|---|---|---|---|
+| 案1: コンソール定期確認 | 開発者が Firebase コンソールの `reports` / `blocks` を毎日目視確認 | △ 通報 UI と「24時間以内に対応する」体制の宣言としては成立し得る（審査は仕組みの実在と運用の説明を見る）。ただしリジェクト文面の「開発者に通知」への直接の回答としては弱く、人的ミスで 24 時間を超過するリスクがある | 追加実装ゼロ | **予備運用として採用** |
+| 案2: クライアントから直接メール送信 API（SendGrid 等）を叩く | 通報/ブロック時にアプリ自身がメール API を呼ぶ | ○ 通知は即時で要件文言は満たす | × 送信用 API キーをアプリバイナリに同梱する必要があり、抽出されるとスパム送信に悪用される。キー失効・ローテーションで通知が全停止する。通信失敗時に通知が消失する | **不採用** |
+| 案3: GitHub Actions 定期実行スクリプト | 30〜60分間隔で `notified == false` の `reports` / `blocks` を Admin SDK で検出しメール送信 | ◎ 「通報・ブロックは自動的に開発者へメール通知され、24時間以内に対応する」と Review Notes に事実として記載できる。通知遅延は最大 1 時間程度で 24 時間 SLA に対して十分 | 認証情報（サービスアカウント・SMTP）は GitHub Secrets に置き、アプリに秘密を持たない。無料枠内（要確認事項 #13） | **採用** |
+| （参考）Blaze + Cloud Functions | Firestore onCreate トリガーで即時メール | ◎ 最も堅牢・即時 | 従量課金（§7 で試算）。将来の移行先 | 今回は見送り |
+
+#### 採用設計（案3 + 予備として案1）
 
 | 成果物 | 種別 | 責務 |
 |---|---|---|
-| `functions/`（新規ディレクトリ、Node.js Cloud Functions） | 新規 | ① `onReportCreated`: `reports/{id}` onCreate → 開発者宛メール送信（通報内容・対象投稿/ユーザーへの Firebase コンソールリンク付き）。② `onBlockCreated`: `blocks/{id}` onCreate → 同様にメール通知（**「ブロック時に開発者に通知」要件**）。③ （2.4(b)を採用する場合）Cloudinary Webhook 受け口。メール送信は Firebase Extensions「Trigger Email」(Firestore の `mail` コレクション書き込み) を採用し、Functions は `mail` へのドキュメント作成のみ行う |
-| `docs/moderation-runbook.md` | 新規 | 運用手順書: 通知メール受信 → Firebase コンソールで対象確認 → 対応（`posts.isHidden = true` / 投稿削除 / `users` の当該ユーザー対応）→ `reports.status` を "actioned" に更新、を **24時間以内** に行う手順。App Review への回答文にもこのフローを記載する |
+| `scripts/moderation-notifier/`（Node.js） | 新規 | firebase-admin（サービスアカウント認証）で `reports` / `blocks` の `notified == false` を取得し、通知メールを **cjie46251@gmail.com** へ送信（reportId/blockId・対象ユーザー ID・理由・Firebase コンソールへの直リンクを本文に含める）。送信成功後に `notified: true` / `notifiedAt` を更新（Admin SDK はセキュリティルール対象外のため、クライアントに update を許可しなくてよい） |
+| `.github/workflows/moderation-notifier.yml` | 新規 | schedule（30分間隔。Actions 枠が逼迫する場合は60分）+ workflow_dispatch（手動実行・動作確認用）。Secrets: Firebase サービスアカウント JSON / SMTP 認証情報（要確認事項 #11） |
+| `docs/moderation-runbook.md` | 新規 | 運用手順書: 通知メール受信 → Firebase コンソールで対象確認 → 対応（`posts.isHidden = true` / 投稿削除 / 当該ユーザーへの措置）→ `reports.status` を "actioned" に更新、を **24時間以内** に行う手順。予備運用として 1 日 1 回のコンソール直接確認（案1）も明記 |
 
-Cloud Functions は Blaze プラン（従量課金）が必要（要確認事項 #1）。Blaze 化が不可の場合の代替案: 通報/ブロックを Firestore に加えて Google フォーム的な外部通知はセキュリティ上不可のため、**Firebase コンソールの Firestore 画面を毎日確認する運用 + App Review 回答でその旨を説明**に格下げする（審査上はメール通知ありが望ましい）。
+App Review 再提出時は Review Notes に「通報・ブロックは開発者へ自動メール通知され、24 時間以内に内容確認とコンテンツ削除・アカウント措置を行う（連絡先: cjie46251@gmail.com）」を記載する。
 
 ### 2.6 設定画面の基盤整備（ブロック一覧・アカウント削除の置き場所）
 
@@ -275,13 +294,14 @@ Auth アカウント削除**前**に Firestore を消す（削除後はセキュ
 2. `follows`: `followerId == 自分` を全件取得 → 各相手の `followersCount` を -1 → 削除
 3. `follows`: `followingId == 自分` を全件取得 → 各相手の `followingCount` を -1 → 削除
 4. `followRequests`: `requesterId == 自分` / `targetId == 自分` を削除
-5. `blocks`: `blockerId == 自分` / `blockedId == 自分` を削除
+5. `blocks`: `blockerId == 自分` のものを削除。`blockedId == 自分` のものはセキュリティルール上削除できない（許可すると「ブロックされた側の自己解除」の穴になる）ため**残置**する。残置された block は相手のブロック一覧で「退会したユーザー」として表示され、解除操作は引き続き可能（T10）
 6. `users/{uid}/hiddenPosts` サブコレクションを削除
 7. `users/{uid}` 本体を削除
 8. `reports` は**削除しない**（モデレーション記録として保持。通報者IDが消えたユーザーを指す場合があるが許容）
 
 補足:
-- Cloudinary 上の画像削除は unsigned API では不可能（Admin API は api_secret 必須でクライアントに置けない）。初期対応では**画像はオーファンとして残す**か、Cloud Functions（Auth onDelete トリガー）で Cloudinary Admin API を呼んで削除する（要確認事項 #6）。
+- **前提: users の `allow delete: if false` を「本人のみ許可」に変更する必要がある（§6.2 / T18）。T18 のルール適用前は削除フローが動作しない。** また手順 2〜3 のカウンタ減算は、修正後ルールの「カウンタのみ・±1・非負」分岐（§6.1）で許可される（1 フォロー関係につき 1 書き込みで ±1 のため）。
+- Cloudinary 上の画像削除は unsigned API では不可能（Admin API は api_secret 必須でクライアントに置けない）。Blaze 非承認のため（要確認事項 #1/#6）、**画像はオーファンとして残す方針で確定**。将来必要になれば、通知スクリプトと同じ GitHub Actions 基盤（Secrets に Cloudinary api_secret を登録）で削除キューを処理できる。
 - 途中失敗時の挙動: Firestore 削除が部分的に完了し Auth 削除前にエラーになった場合、ユーザーは再度削除を実行できる（各ステップは冪等）。設計上これを許容する。
 
 ### 3.4 画面遷移
@@ -339,9 +359,229 @@ ProfileScreen → (歯車) → SettingsScreen
 
 ---
 
-## 6. 実装順序（タスクリスト）
+## 6. Firestore セキュリティルール設計（要確認事項 #4 の回答と追加依頼 A/B を反映）
 
-各タスクは 1 コミット相当。依存関係順に並べてある。**「完了条件」をすべて満たすこと**をコミットの条件とする。共通完了条件として全タスクで「アプリターゲットと Widget ターゲットのビルドが通ること」を含む。
+### 6.1 脆弱性 A の確認と修正（users の update ルール）
+
+**指摘の確認**: その通りです。現行ルールの
+
+```
+allow update: if signedIn() && (
+  request.auth.uid == userId ||
+  request.resource.data.diff(resource.data).affectedKeys()
+    .hasOnly(['followersCount', 'followingCount'])
+);
+```
+
+は、OR の第 2 分岐が「誰が」「誰のドキュメントを」「どんな値に」更新するかを一切検証していないため、認証済みユーザーなら誰でも、**任意のユーザー**の followersCount / followingCount を**任意の値**（負数や 9,999,999 など）に書き換えられる。
+
+**修正（採用・§6.4 のルールセットに反映済み）**: 第 2 分岐に「各カウンタの変化量が ±1 以内」「結果が非負」の制約を追加する。フォロー承認/解除・ブロック・退会処理での正当なカウンタ更新は、いずれも 1 書き込みにつき ±1 なので（§3.3 補足参照）、**既存・新規のアプリコードの変更は不要**。バッチ/トランザクション内の複数操作も 1 操作ずつルール評価されるため影響しない。
+
+**残存リスクと将来の抜本対応（今回は見送り）**: ±1 制約後も、悪意ある認証済みユーザーが他人のカウンタを ±1 ずつ繰り返し増減させる嫌がらせは防げない。「同一トランザクションに正当な follows の作成/削除が伴うか」はドキュメント ID が不定のためルールから検証できず、ルールだけでの完全防御は不可能。抜本対応は**非正規化カウンタ（followersCount / followingCount / postsCount）を廃止し、Firestore の `count()` 集計クエリに置き換える**こと。users の update を本人のみに単純化でき、FollowService のトランザクションと退会時のカウンタ減算も不要になるが、FollowService / UserService / PostService / 各 ViewModel / FollowServiceTests に跨る中規模改修になるため今回は見送り、公開後の改善課題とする。
+
+**その他の既知の割り切り（現行ルールのコメントで自認済みのもの）**: users の read で email が全認証ユーザーに読める点、posts の read が全認証ユーザーに開いており鍵アカ制御がクライアントのみである点は、今回のリジェクト対応の必須範囲外として現状維持とする（email はプロフィール公開部分とプライベート部分のドキュメント分離、posts はフォロー関係の `exists()` 検証が将来の改善策。T20 の複合 ID 化は posts 側の改善の前提にもなる）。
+
+### 6.2 新規コレクションのルールとアカウント削除の有効化（追加依頼 B）
+
+§6.4 のルールセット全文に含まれる変更点の要約:
+
+- **users の delete**: `if false` → **本人のみ許可**。アカウント削除（T15）は「Firestore データ削除 → Auth 削除」の順で実行するため、削除時点で本人の auth は有効であり、この変更だけでクライアント側カスケード削除が成立する。
+- **blocks（新規）**: 作成は blocker 本人のみ（ドキュメント ID が複合 ID `{blockerId}_{blockedId}` と一致することも強制。二重ブロックは ID 衝突で失敗）。読み取りは当事者のみ（ブロックされた側にも許可: フィード防御フィルタ `getBlockerIds` で使用する。「誰にブロックされたか」が API 上検知可能になるトレードオフは許容）。削除は blocker のみ（ブロックされた側の自己解除と、退会者による相手側ブロックの削除を防ぐ → §3.3 手順 5 の残置仕様）。更新は全面禁止（`notified` は Admin SDK のみが更新し、Admin SDK はルール対象外）。
+- **reports（新規）**: 作成は reporter 本人のみ、かつ `status == "pending"` / `notified == false` の初期状態を強制。クライアントからの読み取り・更新・削除は全面禁止（運営は Firebase コンソール / Admin SDK で閲覧・更新する）。
+- **users/{uid}/hiddenPosts（新規）**: 本人のみ読み取り・作成・削除可。
+- **posts**: 作成時に `isHidden == false` を強制。更新時に `isHidden` の変更を禁止（運営がコンソールで true にした投稿を、投稿者が API 直叩きで自己解除するのを防ぐ）。
+
+### 6.3 強化オプション（T20・推奨）: 複合 ID と exists() 検証
+
+**追加で発見した問題（フィード注入）**: 現行の follows の create ルールは「`followingId == 自分`」しか検証しないため、悪意あるユーザー B が `{followerId: A, followingId: B}` のドキュメントを API 直叩きで作成でき、**A の同意なく「A が B をフォローしている」状態を作れる**。`HomeViewModel` / `WidgetDataUpdater` は follows の followerId == A から取得対象を決めるため、B は自分の投稿を A のタイムラインとウィジェットに注入できる。UGC 審査対応（不適切コンテンツの強制表示）の観点でも塞ぐことが望ましい。
+
+**対策**: followRequests のドキュメント ID を `"{requesterId}_{targetId}"`、follows を `"{followerId}_{followingId}"` の複合 ID にし、ルールで以下を検証する:
+
+```
+// followRequests の create（強化版）
+allow create: if signedIn()
+  && requestId == request.resource.data.requesterId + '_' + request.resource.data.targetId
+  && request.resource.data.requesterId == request.auth.uid
+  && request.resource.data.targetId != request.auth.uid
+  && request.resource.data.status == 'pending'
+  // ブロック関係（双方向）があればサーバ側で拒否
+  && !exists(/databases/$(database)/documents/blocks/$(request.auth.uid + '_' + request.resource.data.targetId))
+  && !exists(/databases/$(database)/documents/blocks/$(request.resource.data.targetId + '_' + request.auth.uid));
+
+// follows の create（強化版）
+allow create: if signedIn()
+  && followId == request.resource.data.followerId + '_' + request.resource.data.followingId
+  && request.resource.data.followingId == request.auth.uid
+  && request.resource.data.followerId != request.auth.uid
+  // 対応するフォローリクエストが存在する場合のみ作成可（フィード注入の遮断）。
+  // 承認トランザクション内ではリクエスト削除前の状態が参照されるため exists() は成立する
+  && exists(/databases/$(database)/documents/followRequests/$(request.resource.data.followerId + '_' + request.auth.uid));
+```
+
+副次効果: followRequests / follows の重複作成も ID 衝突で防げ、`FollowService.sendFollowRequest` のブロックチェックがサーバ側でも強制される。**既存の開発データは複合 ID でないため、適用前にワイプが必要**（要確認事項 #12）。`FollowService` のドキュメント作成箇所（`document()` → `document(複合ID)`）と `FollowServiceTests` の修正を伴うため、独立タスク T20 とする。
+
+### 6.4 ルールセット全文（T18 で `firestore.rules` としてリポジトリに追加し、コンソールへ適用）
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // 他人による users 更新は、フォロー承認/解除・ブロック・退会処理でのカウンタ増減のみ。
+    // 1回の書き込みにつき各カウンタ ±1・結果非負に制限する（脆弱性 A の修正）
+    function isValidCounterUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['followersCount', 'followingCount'])
+        && (request.resource.data.followersCount - resource.data.followersCount) in [-1, 0, 1]
+        && (request.resource.data.followingCount - resource.data.followingCount) in [-1, 0, 1]
+        && request.resource.data.followersCount >= 0
+        && request.resource.data.followingCount >= 0;
+    }
+
+    // ===== users =====
+    match /users/{userId} {
+      // 検索・プロフィール表示のため認証済みユーザーは読み取り可
+      // （注意: email も読める。現状維持の割り切り。将来はドキュメント分離で改善）
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.followersCount == 0
+        && request.resource.data.followingCount == 0
+        && request.resource.data.postsCount == 0;
+      allow update: if signedIn() && (
+        request.auth.uid == userId ||
+        isValidCounterUpdate()
+      );
+      // アカウント削除（T15）: 「Firestore 削除 → Auth 削除」の順のため本人 auth は有効
+      allow delete: if signedIn() && request.auth.uid == userId;
+
+      // ===== users/{userId}/hiddenPosts =====（通報者の非表示リスト）
+      match /hiddenPosts/{postId} {
+        allow read, create, delete: if signedIn() && request.auth.uid == userId;
+        allow update: if false;
+      }
+    }
+
+    // ===== posts =====
+    match /posts/{postId} {
+      // 開発段階: 認証済みなら読み取り可（鍵アカ制御はアプリ側ロジック。現状維持）
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == request.resource.data.userId
+        && request.resource.data.isHidden == false;
+      // isHidden は運営専用（コンソール / Admin SDK はルール対象外）。投稿者による自己解除を防ぐ
+      allow update: if signedIn() && request.auth.uid == resource.data.userId
+        && request.resource.data.isHidden == resource.data.isHidden;
+      allow delete: if signedIn() && request.auth.uid == resource.data.userId;
+    }
+
+    // ===== followRequests =====（現行のまま。T20 採用時は §6.3 の強化版 create に差し替え）
+    match /followRequests/{requestId} {
+      allow read: if signedIn() && (
+        resource.data.requesterId == request.auth.uid ||
+        resource.data.targetId == request.auth.uid
+      );
+      allow create: if signedIn()
+        && request.resource.data.requesterId == request.auth.uid
+        && request.resource.data.targetId != request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update: if false;
+      allow delete: if signedIn() && (
+        resource.data.requesterId == request.auth.uid ||
+        resource.data.targetId == request.auth.uid
+      );
+    }
+
+    // ===== follows =====（現行のまま。T20 採用時は §6.3 の強化版 create に差し替え）
+    match /follows/{followId} {
+      allow read: if signedIn() && (
+        resource.data.followerId == request.auth.uid ||
+        resource.data.followingId == request.auth.uid
+      );
+      allow create: if signedIn()
+        && request.resource.data.followingId == request.auth.uid
+        && request.resource.data.followerId != request.auth.uid;
+      allow update: if false;
+      allow delete: if signedIn() && (
+        resource.data.followerId == request.auth.uid ||
+        resource.data.followingId == request.auth.uid
+      );
+    }
+
+    // ===== blocks =====（新規）
+    match /blocks/{blockId} {
+      // 当事者のみ読み取り可（ブロックされた側の読み取りは getBlockerIds のフィード防御で使用）
+      allow read: if signedIn() && (
+        resource.data.blockerId == request.auth.uid ||
+        resource.data.blockedId == request.auth.uid
+      );
+      // 作成は blocker 本人のみ。複合 ID 一致を強制（二重ブロックは ID 衝突で失敗）
+      allow create: if signedIn()
+        && request.resource.data.blockerId == request.auth.uid
+        && request.resource.data.blockedId != request.auth.uid
+        && blockId == request.resource.data.blockerId + '_' + request.resource.data.blockedId
+        && request.resource.data.notified == false;
+      // notified の更新は通知スクリプト（Admin SDK・ルール対象外）のみ
+      allow update: if false;
+      // 削除（= ブロック解除）は blocker のみ。ブロックされた側の自己解除・退会時の削除は不可
+      allow delete: if signedIn() && resource.data.blockerId == request.auth.uid;
+    }
+
+    // ===== reports =====（新規）
+    match /reports/{reportId} {
+      // 作成は通報者本人のみ。初期状態（pending・未通知）を強制
+      allow create: if signedIn()
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.notified == false;
+      // 閲覧・対応は運営のみ（Firebase コンソール / Admin SDK はルール対象外）
+      allow read, update, delete: if false;
+    }
+  }
+}
+```
+
+---
+
+## 7. Blaze プランの推奨判断と費用試算（追加依頼 C への回答）
+
+### 7.1 結論
+
+- **今回の審査再提出は「Blaze なし」で進める**（決定の通り。§2.4 / §2.5 / §3 / §6 はその前提で再設計済み）。**審査通過に Blaze は必須ではない。**
+- ただし**中期的（App Store 公開後、利用が伸び始めた時点）には Blaze 承認を推奨**する。移行の目安: Firebase コンソールの使用量グラフで「1 日の読み取りが無料枠 5 万件の 50% を超えた」時点。
+
+### 7.2 推奨理由
+
+1. **Spark の無料枠は「課金」ではなく「停止」で効く**: Spark では読み取り 5万/日・書き込み 2万/日 の日次クォータを超えると、その日の Firestore アクセスが**エラーになりアプリ全体が動かなくなる**（タイムライン・プロフィール・ウィジェットすべて）。利用者が増えたときの最初の障害が「日中に全ユーザーでアプリが使えなくなる」という形で現れる。Blaze は同じ無料枠を含み、**超過分だけ課金される（= 止まらない）**。
+2. **通知の堅牢化**: 現設計（GitHub Actions ポーリング）は 30〜60 分の遅延と GitHub への外部依存がある。Blaze なら Firestore トリガーで即時・Firebase 内で完結する。
+3. **費用リスクの実体は小さい**: 下表の通り、現実的な規模では実質 ¥0〜数百円。「費用が読めない」不安には予算アラートで対処できる（§7.4）。
+
+### 7.3 想定利用規模での月額試算
+
+前提: DAU = MAU × 30%。1 DAU あたり読み取り 150 件/日（タイムライン 20 件 × 3 セッション + プロフィール・フォロー関係・ウィジェット更新）、書き込み 15 件/日。単価は米国マルチリージョン基準（読み取り $0.06 / 10万件、書き込み $0.18 / 10万件）。**リージョンにより単価は 2〜4 割程度上下するため、プロジェクトの Firestore ロケーションを確認して再計算すること。** $1 = ¥150 換算。
+
+| 想定規模 | 読み取り/日 | Spark（無料）での状態 | Blaze 月額（無料枠控除後の課金額） |
+|---|---|---|---|
+| 100 MAU（30 DAU） | 約 4,500 | 枠内。問題なし | **¥0** |
+| 1,000 MAU（300 DAU） | 約 45,000 | **無料枠 5万/日にほぼ到達。ピーク日は日中に停止するリスク** | **¥0〜約 ¥100** |
+| 10,000 MAU（3,000 DAU） | 約 450,000 | **毎日クォータ超過で停止（実質運用不能）** | **約 ¥1,100〜1,500**（読み取り約 $7.2 + 書き込み約 $1.4） |
+
+- 将来 Cloud Functions を使う場合も、通報/ブロック通知程度の呼び出し回数（多くて数百回/月）は無料枠 200 万回/月の誤差未満。付随費用（Artifact Registry 等）は月数円〜数十円。
+- ストレージ: 画像は Cloudinary 側にあるため、Firestore ストレージは当面 1 GiB 無料枠内。
+
+### 7.4 「費用が読めない」懸念への対策（Blaze 移行時）
+
+- Cloud Billing の**予算アラート**を ¥500 / ¥1,000 / ¥3,000 の 3 段階で設定する（メール通知）。
+- 注意: 予算アラートは**通知のみで自動停止はしない**（Google は旧来の支出上限機能を廃止済み）。ただし暴走課金の典型例は Cloud Functions の無限ループであり、本設計は Functions を使わないため、移行直後の課金源は Firestore 超過分のみ。単価が低く、規模に比例してしか増えないため予測可能性は高い。
+- 移行時は §2.5 の通知を Functions トリガーへ差し替える（T17 の GitHub Actions は廃止してよい）。
+
+---
+
+## 8. 実装順序（タスクリスト）
+
+各タスクは 1 コミット相当。**実施順は末尾の「依存関係まとめ」に従う**（タスク番号は識別子であり実施順ではない。特に T18（ルール適用）はフェーズ 4 より前に実施する）。**「完了条件」をすべて満たすこと**をコミットの条件とする。共通完了条件として全タスクで「アプリターゲットと Widget ターゲットのビルドが通ること」を含む。
 
 ### フェーズ 1: バグ修正（Guideline 2.1）
 
@@ -392,9 +632,10 @@ ProfileScreen → (歯車) → SettingsScreen
 ### フェーズ 4: ブロック（Guideline 1.2-④）
 
 **T6. BlockService とデータ層**
-- 内容: §2.2。`BlockService.swift` 新規（モデル・blockUser/unblockUser/getBlockedIds/getBlockerIds/isBlocked）、`FirebaseManager.blocksCollection` 追加。
+- 内容: §2.2。`BlockService.swift` 新規（モデル・blockUser/unblockUser/getBlockedIds/getBlockerIds/isBlocked）、`FirebaseManager.blocksCollection` 追加。ドキュメント ID は複合 ID `"{blockerId}_{blockedId}"`、作成時に `notified: false` を含める。**前提: T18（blocks のルール適用。ルール未適用だとデフォルト拒否で動作しない）**。
 - 完了条件:
   - `blockUser` 実行で `blocks` ドキュメントが作成され、双方向の `follows` と pending `followRequests` が削除され、関係者のフォローカウントが正しく減算される（フォロー関係がないペアでもエラーにならない）。
+  - 作成された `blocks` ドキュメントの ID が `{blockerId}_{blockedId}` 形式で、`notified: false` を含む。
   - 同一ペアの二重ブロックは `BlockServiceError.alreadyBlocked` を throw。
   - `unblockUser` で `blocks` ドキュメントが削除される（フォロー関係は復元しない）。
   - 既存の `FollowServiceTests` と同様のスタイルで `BlockServiceTests.swift` を追加し、上記が XCTest で確認できる。
@@ -425,14 +666,15 @@ ProfileScreen → (歯車) → SettingsScreen
 - 完了条件:
   - 設定 → ブロックしたユーザー で、ブロック中の全ユーザーが表示名・@username・プロフィール画像付きで一覧表示される。
   - 各行の「ブロック解除」→ 確認 → 実行で一覧から消え、`blocks` ドキュメントが削除される。
+  - プロフィール取得に失敗した行（退会したユーザー等）は「退会したユーザー」と表示され、その行でもブロック解除は実行できる。
   - 0 件時は空状態表示（既存 EmptyNotificationsView と同パターン）。
 
 ### フェーズ 5: 通報（Guideline 1.2-③）
 
 **T11. ReportService とデータ層**
-- 内容: §2.3。`ReportService.swift` 新規（`FirestoreReport` / `ReportReason` / submitReport / hidePost / getHiddenPostIds）。
+- 内容: §2.3。`ReportService.swift` 新規（`FirestoreReport` / `ReportReason` / submitReport / hidePost / getHiddenPostIds）。**前提: T18（reports / hiddenPosts のルール適用）**。
 - 完了条件:
-  - `submitReport` で `reports` ドキュメントが §2.3 のスキーマ通り（status="pending"）作成される。
+  - `submitReport` で `reports` ドキュメントが §2.3 のスキーマ通り（status="pending"、notified=false）作成される。
   - `hidePost` で `users/{uid}/hiddenPosts/{postId}` が作成され、`getHiddenPostIds` がそれを返す。
   - `BlockServiceTests` と同様のスタイルの `ReportServiceTests.swift` で上記が確認できる。
 
@@ -466,9 +708,9 @@ ProfileScreen → (歯車) → SettingsScreen
 ### フェーズ 7: アカウント削除（Guideline 5.1.1(v)）
 
 **T15. 削除のサービス層（再認証 + カスケード削除）**
-- 内容: §3.2/3.3。`AuthenticationService.reauthenticate` + `.requiresRecentLogin`、`UserService.deleteUserData`、`AuthViewModel.deleteAccount(password:)` 完成、`SharedDataManager.clearWidgetData()`（logout 時にも呼ぶ）。
+- 内容: §3.2/3.3。`AuthenticationService.reauthenticate` + `.requiresRecentLogin`、`UserService.deleteUserData`、`AuthViewModel.deleteAccount(password:)` 完成、`SharedDataManager.clearWidgetData()`（logout 時にも呼ぶ）。**前提: T18（users の delete 許可を含むルール適用）**。
 - 完了条件:
-  - テストユーザーで `deleteAccount(password:)` 実行後、Firestore に当該ユーザーの `users` / `posts` / `follows`（双方向）/ `followRequests` / `blocks` / `hiddenPosts` が残っていない。
+  - テストユーザーで `deleteAccount(password:)` 実行後、Firestore に当該ユーザーの `users` / `posts` / `follows`（双方向）/ `followRequests` / `blocks`（blockerId が自分のもの）/ `hiddenPosts` が残っていない（blockedId が自分の blocks は §3.3 手順 5 の仕様通り残る）。
   - フォロー関係のあった相手ユーザーの followersCount / followingCount が正しく減算されている。
   - Firebase Auth コンソールから当該アカウントが消えている。
   - 誤ったパスワードでは削除が実行されず、日本語のエラーメッセージが返る。
@@ -484,18 +726,23 @@ ProfileScreen → (歯車) → SettingsScreen
 
 ### フェーズ 8: バックエンド・仕上げ
 
-**T17. Cloud Functions による開発者通知（要確認事項 #1 の回答後に着手）**
-- 内容: §2.5。`functions/` ディレクトリ新規（onReportCreated / onBlockCreated → Trigger Email 用 `mail` コレクション書き込み）、Firebase Extensions「Trigger Email」導入、`docs/moderation-runbook.md` 作成。
+**T17. 開発者通知（GitHub Actions 定期実行スクリプト）**
+- 内容: §2.5。`scripts/moderation-notifier/` に Node.js スクリプト（firebase-admin で `reports` / `blocks` の `notified == false` を取得 → cjie46251@gmail.com へメール送信 → `notified: true` / `notifiedAt` を Admin SDK で更新）、`.github/workflows/moderation-notifier.yml`（30分間隔の schedule + workflow_dispatch）。認証情報（Firebase サービスアカウント JSON・SMTP 認証情報）は GitHub Secrets（要確認事項 #11）。`docs/moderation-runbook.md` 作成。
 - 完了条件:
-  - 通報作成時・ブロック作成時に、指定メールアドレスへ対象情報（reportId/blockId、対象ユーザーID、理由、コンソールリンク）を含むメールが届く。
-  - `firebase deploy --only functions` が成功する。
-  - runbook に 24 時間以内の対応手順（確認 → 措置 → status 更新）が記載されている。
+  - workflow_dispatch の手動実行で、未通知の通報/ブロックがメールで届き（reportId/blockId、対象ユーザーID、理由、Firebase コンソールへのリンクを含む）、該当ドキュメントの `notified` が true / `notifiedAt` が設定される。
+  - 未通知ドキュメントが 0 件のときはメールが送信されない。
+  - schedule 実行が有効で、間隔が 30〜60 分（Actions 無料枠は要確認事項 #13 に従う）。
+  - runbook に 24 時間以内の対応手順（通知受信 → 確認 → isHidden 化/削除/アカウント措置 → reports.status を "actioned" に更新）と、予備運用（1日1回のコンソール確認）が記載されている。
 
-**T18. Firestore セキュリティルールの更新（要確認事項 #4 の回答後に着手）**
-- 内容: 新コレクションのルール追加。`blocks`: 作成は `request.auth.uid == blockerId` のみ・読み取りは当事者のみ・削除は blocker のみ。`reports`: 作成は `request.auth.uid == reporterId` のみ・クライアントからの読み取り/更新/削除は不可。`users/{uid}/hiddenPosts`: 本人のみ読み書き。`users` の同意フィールド更新は本人のみ。削除フロー（T15）の削除操作が許可されることも確認。
+**T18. Firestore セキュリティルールの更新（フェーズ 4 より前に実施）**
+- 内容: §6.4 のルールセット全文を `firestore.rules` としてリポジトリに追加し、Firebase コンソールへ適用（CLI・Blaze 不要）。含まれる変更: users カウンタ更新の脆弱性 A 修正（±1・非負制約）、users の delete 許可（本人のみ）、blocks / reports / hiddenPosts のルール追加、posts の isHidden 強制（作成時 false・クライアント変更禁止）。
 - 完了条件:
-  - ルールをデプロイした状態で T6〜T16 の完了条件がすべて成立する（権限エラーが起きない）。
-  - 他人になりすました block/report 作成、他人の reports 読み取りが拒否される（Firebase Emulator またはルールユニットテストで確認）。
+  - リポジトリに `firestore.rules` が存在し、内容が §6.4 と一致する。コンソールへ適用済み。
+  - 他人の followersCount / followingCount を「±1 の範囲外の値」または「他フィールドと同時」に更新しようとすると拒否される（Rules Playground または Firebase Emulator で確認）。
+  - 本人による users ドキュメントの削除が許可され、他人のドキュメント削除は拒否される。
+  - なりすました block / report の作成（blockerId / reporterId ≠ 自分）、reports のクライアント読み取り、posts.isHidden のクライアント変更が拒否される。
+  - 既存機能（フォローリクエスト送信/承認/拒否/解除、投稿作成/削除、プロフィール更新）が引き続き動作する。
+  - ※ T14 実装前に適用する場合、posts の `isHidden` 条件は T14 と同時に有効化する（既存アプリコードは isHidden を書かないため、先に強制すると投稿作成が失敗する）。その場合 T18 は「isHidden 以外」を先行適用し、isHidden 条件の追加を T14 の完了条件に含める。
 
 **T19. プレースホルダ整理（Guideline 2.1(a) スクリーンショット関連の再発防止）**
 - 内容: §5。ウィジェットのモック初期化（`setupMockDataIfNeeded` / Provider のモックフォールバック）を `#if DEBUG` 限定にし、リリースビルドの空状態は `EmptyWidgetView` に委ねる。発見タブを MainTabView から削除（投稿タブの tag ハンドリングを維持）。未使用の `ContentView .swift` を削除。
@@ -505,43 +752,53 @@ ProfileScreen → (歯車) → SettingsScreen
   - `ContentView .swift` 削除後もビルドが通る。
   - ※App Store Connect のスクリーンショット再撮影・差し替えはコード外の運用作業として別途実施。
 
+**T20.（推奨・任意）follows / followRequests の複合 ID 化とルール強化**
+- 内容: §6.3。`follows` のドキュメント ID を `"{followerId}_{followingId}"`、`followRequests` を `"{requesterId}_{targetId}"` の複合 ID に変更（`FollowService` の `document()` 呼び出し箇所と `FollowServiceTests` を修正）。`firestore.rules` の followRequests / follows の create を §6.3 の強化版に差し替えて再適用。既存の開発データは事前にワイプする（要確認事項 #12）。
+- 完了条件:
+  - フォローリクエスト送信・承認で作成されるドキュメントの ID が複合 ID 形式である。
+  - followRequest が存在しない状態で follows を直接作成しようとするとルールで拒否される（Rules Playground / Emulator で確認 = フィード注入の遮断）。
+  - ブロック関係があるペアの followRequest 作成がルールで拒否される。
+  - フォロー送信 → 承認 → 解除 → 再フォローの一連のフローが従来通り動作し、`FollowServiceTests` がパスする。
+
 ### 依存関係まとめ
+
+実施順はこのグラフに従う（タスク番号は識別子であり実施順ではない）:
 
 ```
 T1（独立・最優先）
 T2 ─┬─ T3 → T4 → T5
     ├─ T10, T16
+T18（ルール適用）→ T6, T11, T15   ← blocks/reports/hiddenPosts はルールなしではデフォルト拒否
 T6 → T7 → T8, T9
 T6 → T10
 T11 → T12（T9 のメニュー実装に依存）
 T13（独立）
-T14（独立。T12 のウィジェット反映と隣接）
+T14（独立。isHidden ルール強制のタイミングは T18 の注記参照）
 T15 → T16
 T6, T11 → T17
-T4〜T16 → T18（ルールは全機能確定後）
+T18 → T20（任意・推奨。実施する場合は要確認事項 #12 の回答後）
 T19（独立・提出直前で可）
 ```
 
 ---
 
-## 7. 要確認事項
+## 9. 要確認事項
 
-### 7.1 回答済み（設計へ反映済み）
+### 9.1 回答済み（設計へ反映済み）
 
-3. **規約文面の用意** — 回答: ドラフト作成はこちらで行う。EULA は Apple 標準の Licensed Application End User License Agreement（LAEULA）を使用し、「不適切コンテンツへのゼロトレランス」の文言はアプリ内利用規約に別途明記する。
-   → §2.1 の方針および T3 に反映済み。アプリ内静的テキストとして実装し、App Store Connect 側の EULA 設定は変更しない。
+1. **Firebase の料金プラン** — 回答: **Blaze は承認しない**。
+   → §2.4(b) / §2.5 / §3.3 / §6 を Blaze なし前提で再設計済み。推奨判断と費用試算は §7（結論: 今回は Blaze なしで進め、公開後に読み取りが無料枠の 50% を超えた時点での移行を推奨）。
+2. **開発者通知の宛先** — 回答: `cjie46251@gmail.com`。
+   → §2.5 / T17 に反映。App Review の Review Notes にも記載する。
+3. **規約文面の用意** — 回答: ドラフト作成はこちらで行う。EULA は Apple 標準 LAEULA を使用し、ゼロトレランス条項はアプリ内利用規約に明記。
+   → §2.1 / T3 に反映済み。アプリ内静的テキストとして実装し、App Store Connect 側の EULA 設定は変更しない。
+4. **Firestore セキュリティルールの現状** — 回答: 現行ルール全文を受領。
+   → §6 に評価と修正設計を記載（指摘の脆弱性 A の確認と修正 §6.1、追加で発見したフィード注入問題 §6.3 を含む）。T18 で `firestore.rules` として適用。
+5. **Cloudinary の画像モデレーション** — Blaze 非承認により Webhook 受け口を持てないため、**自動画像モデレーションは初回リリースでは見送りで確定**（§2.4(b)）。「NG ワード + 通報 + 24時間以内の人的対応」を審査回答の主軸にする。
+6. **アカウント削除時の Cloudinary 画像** — Blaze 非承認により、**オーファンとして残置で確定**（§3.3）。将来必要になれば GitHub Actions 基盤で削除キュー処理が可能。
 
-### 7.2 未回答（回答待ち）
+### 9.2 未回答（回答待ち。未回答の場合は記載のデフォルト方針で進める）
 
-以下は回答待ち。**1・2・4 は該当タスク（T17 / T18）の着手に回答が必須**。5〜10 は未回答の場合、各項目に記載した「デフォルト方針」で実装を進める。
-
-1. **Firebase の料金プラン**（T17 の前提・回答必須）: 現在 Spark（無料）か Blaze（従量課金）か、Blaze 化を承認するか。Cloud Functions による開発者通知（T17）と Cloudinary Webhook 受け口には Blaze が必要。Blaze 化できない場合、通知は「Firestore コンソールの定期確認運用」に格下げする設計に変える。
-2. **開発者通知の宛先**（T17 の前提・回答必須）: 通報・ブロック通知を受け取るメールアドレス（App Review 回答にも「24時間以内対応」の連絡先として記載する）。
-4. **Firestore セキュリティルールの現状**（T18 の前提・回答必須）: リポジトリにルールファイルがないため、現在コンソールで管理しているルールの内容の共有が必要（テストモードの全許可のままなら、T18 は審査再提出前に必須）。
-5. **Cloudinary の画像モデレーション**: 契約プランで AWS Rekognition モデレーションアドオンが使えるか。
-   デフォルト方針: 使えない前提とし、画像フィルタリングは「通報 + 24時間以内の人的対応（isHidden 化）」を審査回答の主軸にする（T14 はこの場合も必要）。
-6. **アカウント削除時の Cloudinary 画像**: 投稿画像・プロフィール画像を Cloudinary からも消すか（Cloud Functions + Admin API が必要）。
-   デフォルト方針: 初期リリースでは Firestore 参照のみ削除し、画像はオーファンとして残す。
 7. **プロフィール編集の範囲**: username 変更を編集対象に含めるか（投稿の非正規化フィールドとの整合処理が別途必要になる）。
    デフォルト方針: T1 では displayName / bio / プロフィール画像のみ編集可とし、username 変更は対象外。
 8. **既存データのバックフィル**: 本番 Firestore の既存 `posts` に `isHidden: false` を一括付与する必要がある（T14）。現在の投稿件数の確認。
@@ -549,3 +806,11 @@ T19（独立・提出直前で可）
 9. **発見タブの扱い**: 審査提出版で発見タブを非表示にするか。なお `UserProfileScreen`（他ユーザープロフィール）への導線が現状存在しないため、ブロック・通報 UI の主要導線はタイムラインカードのメニューになる。
    デフォルト方針: T19 の通り非表示にする。
 10. **iPad 実機検証**: iPad Air 11-inch (M3) / iPadOS 26.x の実機またはシミュレータでの最終確認を提出前チェックリストに含める。手元の Xcode で該当 OS バージョンのシミュレータが利用可能かの確認。
+11. **通知メールの送信手段（T17）**: GitHub Actions からのメール送信は Gmail の SMTP + アプリパスワード（Google アカウントの 2 段階認証が必要）を想定。cjie46251@gmail.com のアカウントでアプリパスワードを発行できるか。
+    デフォルト方針: Gmail アプリパスワードを GitHub Secrets に登録して使用（不可の場合は Resend / SendGrid 等の無料枠 SMTP を利用）。
+12. **開発データのワイプ（T20 の前提）**: follows / followRequests の複合 ID 化は既存ドキュメントの ID 形式と互換がないため、適用前に既存の開発用データ（follows / followRequests / blocks）を削除する必要がある。ワイプしてよいか。
+    デフォルト方針: T20 を実施する場合、審査再提出前にワイプする。
+13. **GitHub Actions の無料枠（T17）**: リポジトリが private の場合、Actions 無料枠は月 2,000 分。30 分間隔の通知スクリプト（約 1,440 分/月）は枠内だが、他のワークフローとの合算で超えないか確認。
+    デフォルト方針: 30 分間隔で開始し、枠が逼迫したら 60 分間隔（約 720 分/月）に変更。
+14. **T20（複合 ID 化とルール強化）の採否**: §6.3 のフィード注入対策。審査必須ではないが、UGC アプリのセキュリティとして実施を推奨。
+    デフォルト方針: 実施する（前提: #12 のワイプ承認）。
