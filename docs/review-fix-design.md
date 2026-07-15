@@ -3,8 +3,45 @@
 - 作成日: 2026-07-15
 - 最終更新: 2026-07-15（要確認事項 #3 の回答を反映: EULA は Apple 標準 LAEULA を使用、ゼロトレランス条項はアプリ内利用規約に明記）
 - 最終更新: 2026-07-15（要確認事項 #1/#2/#4 の回答を反映: **Blaze 非承認前提**で開発者通知とアカウント削除を再設計、Firestore セキュリティルール設計を §6 に追加（脆弱性 A の修正を含む）、Blaze の推奨判断と費用試算を §7 に追加。旧 §6/§7 は §8/§9 に繰り下げ）
+- 最終更新: 2026-07-15（**設計確定**: 要確認事項 #7〜#14 の回答を受領し全 14 件回答済み。実装タスクサマリを §0 として追加、T20 を正式採用）
 - 対象リジェクト: Guideline 1.2（UGC対策）/ 5.1.1(v)（アカウント削除）/ 2.1(a)（iPadボタン無反応）/ 2.1(a)（スクリーンショット）
 - 本ドキュメントは設計のみを記述する。実装コードは含まない。
+
+---
+
+## 0. 実装タスクサマリ（設計確定版）
+
+設計は確定済み（要確認事項 #1〜#14 すべて回答済み。§9 参照）。実装は **各タスク 1 コミット・独立セッション** で行う。
+
+**実装セッション共通の前提**:
+
+- 着手時は本表の「詳細」列のセクション（設計本文）と、§8 の該当タスク（**完了条件の正版**）を必ず読むこと。本表の完了条件は要旨である。
+- 共通完了条件: アプリターゲットと Widget ターゲットのビルドが通ること。
+- 既存のコード規約に従う: 画面は `XxxScreen`、コンポーネントは `XxxView`、`XxxViewModel`（`@MainActor ObservableObject`）、`XxxService`（シングルトン `static let shared` / `private init()`）+ `XxxServiceError: LocalizedError`（日本語 errorDescription）、Firestore モデルは Service ファイル内に `FirestoreXxx` struct、日本語コメント・`// MARK:` 構成・絵文字付き print ログ（§1.1/§1.2 参照）。
+- 推奨実施順: **T1 → T2 → T3 → T4 → T5 → T18 → T6 → T7 → T8 → T9 → T10 → T11 → T12 → T13 → T14 → T15 → T16 → T17 → T20 → T19**（タスク番号は識別子であり実施順ではない。T18 は blocks / reports / hiddenPosts / users-delete のルール前提のため T6/T11/T14/T15 より先）
+
+| # | タスク | 依存 | 主な新規/変更対象 | 完了条件（要旨） | 詳細 |
+|---|---|---|---|---|---|
+| T1 | EditProfileScreen 実装と「プロフィールを編集」ボタン接続（リジェクト 3 の修正） | なし | `Views/Profile/EditProfileScreen.swift`（新規）、`ProfileScreen.swift` | iPhone/iPad 両方で編集 sheet が開き、表示名/自己紹介/画像の保存が Firestore に反映される | §4.2 |
+| T2 | SettingsScreen の独立と設定画面骨格 | なし | `Views/Settings/SettingsScreen.swift`（新規）、`ProfileScreen.swift` | 歯車 → 設定が SettingsScreen で表示され、ログアウトが従来通り動作。旧 `SettingsView` は消滅 | §2.6 |
+| T3 | 規約文書ドラフトと TermsScreen | T2 | `Views/Legal/LegalTexts.swift` / `TermsScreen.swift`（新規）、`SettingsScreen` | 規約/ポリシー全文が表示され、ゼロトレランス条項と LAEULA 準拠の記載を含む | §2.1 |
+| T4 | 新規登録の同意ゲートと同意記録 | T3 | `SignUpScreen.swift`、`UserService.swift` | 未同意では登録不可。登録後 users に `agreedTermsVersion` / `agreedTermsAt` が保存される | §2.1 |
+| T5 | 既存ユーザーの再同意フロー | T4 | `Views/Legal/TermsAgreementScreen.swift`（新規）、`AuthViewModel`、RootView | 未同意ユーザーに閉じられない同意 sheet が出て、同意で解除・永続化される | §2.1 |
+| T18 | Firestore セキュリティルール適用（脆弱性 A 修正含む） | なし。**T6/T11/T14/T15 の前提** | `firestore.rules`（新規）+ コンソール適用 | §6.4 と一致。カウンタ ±1 制約、users delete 許可、blocks/reports/hiddenPosts ルールが Playground/Emulator で検証済み | §6 |
+| T6 | BlockService とデータ層 | T18 | `Services/BlockService.swift`（新規）、`FirebaseManager.swift`、`BlockServiceTests.swift`（新規） | 複合 ID の blocks 作成 + 双方向フォロー関係/リクエスト解消 + カウンタ減算。XCTest あり | §2.2 |
+| T7 | フォロー/タイムライン/ウィジェットへのブロック反映 | T6 | `FollowService`、`HomeViewModel`、`WidgetDataUpdater` | ブロック相手がタイムライン・ウィジェットから消え、フォローリクエストは `.blocked` エラー | §2.2 |
+| T8 | UserProfileScreen のブロック UI | T7 | `UserProfileScreen.swift`、`UserProfileViewModel.swift` | メニューからブロック/解除でき、「ブロック中」状態表示・投稿非表示になる | §2.2 |
+| T9 | タイムラインカードのメニューとブロック導線 | T7 | `HomeScreen.swift`（PostCardView）、`HomeViewModel` | ブロックでリフレッシュ不要の即時除去 + ウィジェット更新。自分の投稿には削除メニュー | §2.2 |
+| T10 | ブロック一覧画面 | T6, T2 | `Views/Settings/BlockedUsersScreen.swift` / `BlockedUsersViewModel.swift`（新規）、`SettingsScreen` | 一覧表示・解除ができ、退会ユーザーは「退会したユーザー」表示でも解除可能 | §2.2 |
+| T11 | ReportService とデータ層 | T18 | `Services/ReportService.swift`（新規）、`ReportServiceTests.swift`（新規） | reports 作成（pending / notified=false）と hiddenPosts の読み書き。XCTest あり | §2.3 |
+| T12 | 通報 UI と非表示反映 | T11, T9 | `Views/Report/ReportScreen.swift` / `ReportViewModel.swift`（新規）、`HomeViewModel`、`WidgetDataUpdater` | 通報 → 即時かつ再起動後も非表示（タイムライン・ウィジェット）。ユーザー通報も可能 | §2.3 |
+| T13 | テキスト NG ワードフィルタ | なし | `Services/ModerationService.swift`、`Resources/ProhibitedWords.json`（新規）、`PostCreateViewModel`、`ProfileViewModel` | NG ワードを含む投稿/プロフィールがアップロード前に拒否される | §2.4(a) |
+| T14 | posts.isHidden の導入とクエリ反映 | T18 | `PostService.swift` ほか + 複合インデックス + バックフィル | isHidden=true の投稿が全表示経路から消える。ルールの isHidden 条項を同時有効化 | §2.4(b) |
+| T15 | アカウント削除のサービス層（再認証 + カスケード削除） | T18 | `AuthenticationService`、`UserService`、`AuthViewModel`、`SharedDataManager` | 再認証 → §3.3 の順で Firestore データ全消去 → Auth 削除。widgetData も消去 | §3.2/3.3 |
+| T16 | アカウント削除 UI | T15, T2 | `Views/Settings/AccountDeleteScreen.swift`（新規）、`SettingsScreen` | 説明 → パスワード → 確認 → 削除完了で WelcomeScreen へ自動遷移 | §3.4 |
+| T17 | 開発者通知（GitHub Actions 定期実行） | T6, T11 | `scripts/moderation-notifier/`、`.github/workflows/moderation-notifier.yml`、`docs/moderation-runbook.md`（すべて新規） | 手動実行で未通知の通報/ブロックが cjie46251@gmail.com へ届き、notified が更新される。30 分間隔の schedule 有効 | §2.5 |
+| T20 | follows/followRequests の複合 ID 化とルール強化（フィード注入対策） | T18。T6〜T12 完了後・提出前に実施 | `FollowService`、`FollowServiceTests`、`firestore.rules` | 複合 ID 化され、リクエストなしの follows 直接作成がルールで拒否される。既存フロー・テスト維持（実施前に開発データをワイプ） | §6.3 |
+| T19 | プレースホルダ整理（提出直前） | なし | `PeepholeApp.swift`、`MainTabView.swift`、`SharedDataManager.swift`、`ContentView .swift` 削除 | Release ビルドでウィジェットのモックデータ非表示、発見タブ削除（4 タブで投稿モーダル維持） | §5 |
 
 ---
 
@@ -391,7 +428,7 @@ allow update: if signedIn() && (
 - **users/{uid}/hiddenPosts（新規）**: 本人のみ読み取り・作成・削除可。
 - **posts**: 作成時に `isHidden == false` を強制。更新時に `isHidden` の変更を禁止（運営がコンソールで true にした投稿を、投稿者が API 直叩きで自己解除するのを防ぐ）。
 
-### 6.3 強化オプション（T20・推奨）: 複合 ID と exists() 検証
+### 6.3 強化（T20・採用確定）: 複合 ID と exists() 検証
 
 **追加で発見した問題（フィード注入）**: 現行の follows の create ルールは「`followingId == 自分`」しか検証しないため、悪意あるユーザー B が `{followerId: A, followingId: B}` のドキュメントを API 直叩きで作成でき、**A の同意なく「A が B をフォローしている」状態を作れる**。`HomeViewModel` / `WidgetDataUpdater` は follows の followerId == A から取得対象を決めるため、B は自分の投稿を A のタイムラインとウィジェットに注入できる。UGC 審査対応（不適切コンテンツの強制表示）の観点でも塞ぐことが望ましい。
 
@@ -418,7 +455,7 @@ allow create: if signedIn()
   && exists(/databases/$(database)/documents/followRequests/$(request.resource.data.followerId + '_' + request.auth.uid));
 ```
 
-副次効果: followRequests / follows の重複作成も ID 衝突で防げ、`FollowService.sendFollowRequest` のブロックチェックがサーバ側でも強制される。**既存の開発データは複合 ID でないため、適用前にワイプが必要**（要確認事項 #12）。`FollowService` のドキュメント作成箇所（`document()` → `document(複合ID)`）と `FollowServiceTests` の修正を伴うため、独立タスク T20 とする。
+副次効果: followRequests / follows の重複作成も ID 衝突で防げ、`FollowService.sendFollowRequest` のブロックチェックがサーバ側でも強制される。**既存の開発データは複合 ID でないため、適用前に follows / followRequests / blocks をワイプする**（要確認事項 #12 で承認済み）。`FollowService` のドキュメント作成箇所（`document()` → `document(複合ID)`）と `FollowServiceTests` の修正を伴うため、独立タスク T20 とする（**採用確定**、要確認事項 #14）。
 
 ### 6.4 ルールセット全文（T18 で `firestore.rules` としてリポジトリに追加し、コンソールへ適用）
 
@@ -477,7 +514,7 @@ service cloud.firestore {
       allow delete: if signedIn() && request.auth.uid == resource.data.userId;
     }
 
-    // ===== followRequests =====（現行のまま。T20 採用時は §6.3 の強化版 create に差し替え）
+    // ===== followRequests =====（T18 時点では現行のまま。T20 で §6.3 の強化版 create に差し替える）
     match /followRequests/{requestId} {
       allow read: if signedIn() && (
         resource.data.requesterId == request.auth.uid ||
@@ -494,7 +531,7 @@ service cloud.firestore {
       );
     }
 
-    // ===== follows =====（現行のまま。T20 採用時は §6.3 の強化版 create に差し替え）
+    // ===== follows =====（T18 時点では現行のまま。T20 で §6.3 の強化版 create に差し替える）
     match /follows/{followId} {
       allow read: if signedIn() && (
         resource.data.followerId == request.auth.uid ||
@@ -623,7 +660,7 @@ service cloud.firestore {
   - 既存フィールドのみの users ドキュメントが `FirestoreUser` としてデコードエラーにならない（Optional 定義）。
 
 **T5. 既存ユーザーの再同意フロー**
-- 内容: §2.1。`TermsAgreementScreen.swift` 新規、`AuthViewModel.needsTermsAgreement` / `agreeToCurrentTerms()`、RootView での強制表示。
+- 内容: §2.1。`TermsAgreementScreen.swift` 新規、`UserService.updateTermsAgreement(userId:version:)` 追加、`AuthViewModel.needsTermsAgreement` / `agreeToCurrentTerms()`、RootView での強制表示。
 - 完了条件:
   - `agreedTermsVersion` が nil または `currentTermsVersion` と不一致のユーザーでログイン → MainTabView 表示直後に同意画面が全画面 sheet で表示され、スワイプで閉じられない。
   - 「同意する」タップで Firestore に同意記録が保存され、sheet が閉じ、以後の起動では表示されない。
@@ -703,7 +740,7 @@ service cloud.firestore {
   - 新規投稿の Firestore ドキュメントに `isHidden: false` が含まれる。
   - Firebase コンソールで任意の投稿を `isHidden: true` に変更 → タイムライン・プロフィール・ウィジェットのすべてから消える。
   - 必要な複合インデックスが作成済みで、クエリが index エラーにならない。
-  - 既存投稿（`isHidden` フィールドなし）の扱いについてバックフィル実施（要確認事項 #8 の回答に従う）。
+  - 既存投稿（`isHidden` フィールドなし）に Firebase コンソール手動で `isHidden: false` をバックフィル済み（要確認事項 #8 のデフォルト方針で確定。件数が多い場合のみスクリプトを用意）。
 
 ### フェーズ 7: アカウント削除（Guideline 5.1.1(v)）
 
@@ -752,8 +789,8 @@ service cloud.firestore {
   - `ContentView .swift` 削除後もビルドが通る。
   - ※App Store Connect のスクリーンショット再撮影・差し替えはコード外の運用作業として別途実施。
 
-**T20.（推奨・任意）follows / followRequests の複合 ID 化とルール強化**
-- 内容: §6.3。`follows` のドキュメント ID を `"{followerId}_{followingId}"`、`followRequests` を `"{requesterId}_{targetId}"` の複合 ID に変更（`FollowService` の `document()` 呼び出し箇所と `FollowServiceTests` を修正）。`firestore.rules` の followRequests / follows の create を §6.3 の強化版に差し替えて再適用。既存の開発データは事前にワイプする（要確認事項 #12）。
+**T20. follows / followRequests の複合 ID 化とルール強化（フィード注入対策・採用確定）**
+- 内容: §6.3。`follows` のドキュメント ID を `"{followerId}_{followingId}"`、`followRequests` を `"{requesterId}_{targetId}"` の複合 ID に変更（`FollowService` の `document()` 呼び出し箇所と `FollowServiceTests` を修正）。`firestore.rules` の followRequests / follows の create を §6.3 の強化版に差し替えて再適用。実施前に既存の開発データ（follows / followRequests / blocks）をワイプする（要確認事項 #12 で承認済み）。
 - 完了条件:
   - フォローリクエスト送信・承認で作成されるドキュメントの ID が複合 ID 形式である。
   - followRequest が存在しない状態で follows を直接作成しようとするとルールで拒否される（Rules Playground / Emulator で確認 = フィード注入の遮断）。
@@ -776,15 +813,17 @@ T13（独立）
 T14（独立。isHidden ルール強制のタイミングは T18 の注記参照）
 T15 → T16
 T6, T11 → T17
-T18 → T20（任意・推奨。実施する場合は要確認事項 #12 の回答後）
+T18 → T20（採用確定。T6〜T12 完了後・提出前に実施。データワイプを伴う）
 T19（独立・提出直前で可）
 ```
 
 ---
 
-## 9. 要確認事項
+## 9. 確認事項の記録（全 14 件回答済み — 設計確定）
 
-### 9.1 回答済み（設計へ反映済み）
+2026-07-15 時点で #1〜#14 すべての回答を受領し、設計を確定した。以降の実装は §0 のタスクサマリと §8 の完了条件に従う。
+
+### 9.1 個別確認により回答（#1〜#6）
 
 1. **Firebase の料金プラン** — 回答: **Blaze は承認しない**。
    → §2.4(b) / §2.5 / §3.3 / §6 を Blaze なし前提で再設計済み。推奨判断と費用試算は §7（結論: 今回は Blaze なしで進め、公開後に読み取りが無料枠の 50% を超えた時点での移行を推奨）。
@@ -797,20 +836,17 @@ T19（独立・提出直前で可）
 5. **Cloudinary の画像モデレーション** — Blaze 非承認により Webhook 受け口を持てないため、**自動画像モデレーションは初回リリースでは見送りで確定**（§2.4(b)）。「NG ワード + 通報 + 24時間以内の人的対応」を審査回答の主軸にする。
 6. **アカウント削除時の Cloudinary 画像** — Blaze 非承認により、**オーファンとして残置で確定**（§3.3）。将来必要になれば GitHub Actions 基盤で削除キュー処理が可能。
 
-### 9.2 未回答（回答待ち。未回答の場合は記載のデフォルト方針で進める）
+### 9.2 デフォルト方針の承認と追加回答（#7〜#14）
 
-7. **プロフィール編集の範囲**: username 変更を編集対象に含めるか（投稿の非正規化フィールドとの整合処理が別途必要になる）。
-   デフォルト方針: T1 では displayName / bio / プロフィール画像のみ編集可とし、username 変更は対象外。
-8. **既存データのバックフィル**: 本番 Firestore の既存 `posts` に `isHidden: false` を一括付与する必要がある（T14）。現在の投稿件数の確認。
-   デフォルト方針: コンソール手動対応（件数が多い場合はスクリプトを用意する）。
-9. **発見タブの扱い**: 審査提出版で発見タブを非表示にするか。なお `UserProfileScreen`（他ユーザープロフィール）への導線が現状存在しないため、ブロック・通報 UI の主要導線はタイムラインカードのメニューになる。
-   デフォルト方針: T19 の通り非表示にする。
-10. **iPad 実機検証**: iPad Air 11-inch (M3) / iPadOS 26.x の実機またはシミュレータでの最終確認を提出前チェックリストに含める。手元の Xcode で該当 OS バージョンのシミュレータが利用可能かの確認。
-11. **通知メールの送信手段（T17）**: GitHub Actions からのメール送信は Gmail の SMTP + アプリパスワード（Google アカウントの 2 段階認証が必要）を想定。cjie46251@gmail.com のアカウントでアプリパスワードを発行できるか。
-    デフォルト方針: Gmail アプリパスワードを GitHub Secrets に登録して使用（不可の場合は Resend / SendGrid 等の無料枠 SMTP を利用）。
-12. **開発データのワイプ（T20 の前提）**: follows / followRequests の複合 ID 化は既存ドキュメントの ID 形式と互換がないため、適用前に既存の開発用データ（follows / followRequests / blocks）を削除する必要がある。ワイプしてよいか。
-    デフォルト方針: T20 を実施する場合、審査再提出前にワイプする。
-13. **GitHub Actions の無料枠（T17）**: リポジトリが private の場合、Actions 無料枠は月 2,000 分。30 分間隔の通知スクリプト（約 1,440 分/月）は枠内だが、他のワークフローとの合算で超えないか確認。
-    デフォルト方針: 30 分間隔で開始し、枠が逼迫したら 60 分間隔（約 720 分/月）に変更。
-14. **T20（複合 ID 化とルール強化）の採否**: §6.3 のフィード注入対策。審査必須ではないが、UGC アプリのセキュリティとして実施を推奨。
-    デフォルト方針: 実施する（前提: #12 のワイプ承認）。
+7. **プロフィール編集の範囲** — デフォルト方針で確定: T1 は displayName / bio / プロフィール画像のみ編集可。username 変更は対象外（投稿の非正規化フィールドとの整合処理が必要になるため将来課題）。
+8. **既存データのバックフィル** — デフォルト方針で確定: T14 で既存 `posts` に `isHidden: false` を Firebase コンソール手動で一括付与する（件数が多い場合のみスクリプトを用意）。
+9. **発見タブの扱い** — デフォルト方針で確定: 審査提出版では非表示にする（T19）。ブロック・通報 UI の主要導線はタイムラインカードのメニュー。
+10. **iPad 実機検証** — デフォルト方針で確定: iPad Air 11-inch (M3) / iPadOS 26.x のシミュレータ（または実機）での最終確認を提出前チェックリストに含める（§4.1 の仮説 B〜D の検証を兼ねる）。
+11. **通知メールの送信手段（T17）** — 回答: **Gmail アプリパスワードを発行する**。
+    → T17 は Gmail SMTP + アプリパスワード（GitHub Secrets に登録）で実装する。
+12. **開発データのワイプ（T20 の前提）** — 回答: **承認**（未公開アプリのため問題なし）。
+    → T20 実施前に follows / followRequests / blocks をワイプする。
+13. **GitHub Actions の無料枠（T17）** — 回答: **問題なし**。
+    → T17 は 30 分間隔の schedule で実装する。
+14. **T20（複合 ID 化とルール強化）の採否** — 回答: **採用**。
+    → 正式タスクとして §0 / §8 に組み込み済み（「任意」表記を削除）。
