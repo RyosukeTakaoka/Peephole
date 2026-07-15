@@ -33,6 +33,9 @@ class UserProfileViewModel: ObservableObject {
     /// フォロー操作中
     @Published var isFollowActionInProgress: Bool = false
 
+    /// ブロック操作中
+    @Published var isBlockActionInProgress: Bool = false
+
     /// エラーメッセージ
     @Published var errorMessage: String?
 
@@ -45,6 +48,7 @@ class UserProfileViewModel: ObservableObject {
         case notFollowing       // 未フォロー
         case requestPending     // リクエスト送信済み
         case following          // フォロー中
+        case blocked            // 自分がブロック中
 
         var buttonTitle: String {
             switch self {
@@ -54,6 +58,8 @@ class UserProfileViewModel: ObservableObject {
                 return "リクエスト中"
             case .following:
                 return "フォロー中"
+            case .blocked:
+                return "ブロック中"
             }
         }
 
@@ -65,6 +71,8 @@ class UserProfileViewModel: ObservableObject {
                 return .gray
             case .following:
                 return .green
+            case .blocked:
+                return .gray
             }
         }
     }
@@ -74,6 +82,7 @@ class UserProfileViewModel: ObservableObject {
     private let userService = UserService.shared
     private let postService = PostService.shared
     private let followService = FollowService.shared
+    private let blockService = BlockService.shared
 
     // MARK: - Private Properties
 
@@ -124,6 +133,13 @@ class UserProfileViewModel: ObservableObject {
               let currentUserId = currentUserId else { return }
 
         do {
+            // 自分がブロック中かチェック（ブロック中は投稿を読み込まない）
+            let blockedIds = try await blockService.getBlockedIds(userId: currentUserId)
+            if blockedIds.contains(targetUserId) {
+                self.followStatus = .blocked
+                return
+            }
+
             // フォロー中かチェック
             let isFollowing = try await followService.checkIfFollowing(
                 followerId: currentUserId,
@@ -196,6 +212,10 @@ class UserProfileViewModel: ObservableObject {
         case .following:
             // フォロー解除
             await unfollowUser()
+
+        case .blocked:
+            // ブロック中はこのボタンからは操作しない（Menuからブロック解除する）
+            break
         }
 
         isFollowActionInProgress = false
@@ -246,6 +266,55 @@ class UserProfileViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Block Actions
+
+    /// このユーザーをブロックする
+    func blockUser() async {
+        guard let targetUserId = targetUserId,
+              let currentUserId = currentUserId else { return }
+
+        isBlockActionInProgress = true
+
+        do {
+            try await blockService.blockUser(blockerId: currentUserId, blockedId: targetUserId)
+
+            self.followStatus = .blocked
+            self.posts = [] // 投稿を非表示
+
+            print("✅ User blocked: \(targetUserId)")
+
+        } catch {
+            self.errorMessage = "ブロックに失敗しました"
+            self.showError = true
+            print("❌ Failed to block user: \(error)")
+        }
+
+        isBlockActionInProgress = false
+    }
+
+    /// このユーザーのブロックを解除する
+    func unblockUser() async {
+        guard let targetUserId = targetUserId,
+              let currentUserId = currentUserId else { return }
+
+        isBlockActionInProgress = true
+
+        do {
+            try await blockService.unblockUser(blockerId: currentUserId, blockedId: targetUserId)
+
+            self.followStatus = .notFollowing
+
+            print("✅ User unblocked: \(targetUserId)")
+
+        } catch {
+            self.errorMessage = "ブロック解除に失敗しました"
+            self.showError = true
+            print("❌ Failed to unblock user: \(error)")
+        }
+
+        isBlockActionInProgress = false
+    }
+
     // MARK: - Refresh
 
     /// プロフィールを更新
@@ -289,6 +358,11 @@ class UserProfileViewModel: ObservableObject {
     /// 投稿を表示できるかどうか（フォロー中の場合のみ）
     var canViewPosts: Bool {
         return followStatus == .following
+    }
+
+    /// 自分がこのユーザーをブロック中かどうか
+    var isBlockedByMe: Bool {
+        return followStatus == .blocked
     }
 
     /// 投稿が空かどうか
