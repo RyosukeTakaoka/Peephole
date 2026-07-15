@@ -23,6 +23,8 @@ struct FirestoreUser: Codable, Identifiable {
     var postsCount: Int
     let createdAt: Date
     var updatedAt: Date
+    var agreedTermsVersion: String?
+    var agreedTermsAt: Date?
 
     // Identifiable準拠のため、userIdをidとして使用
     var id: String { userId }
@@ -127,7 +129,9 @@ class UserService {
             followingCount: 0,
             postsCount: 0,
             createdAt: Date(),
-            updatedAt: Date()
+            updatedAt: Date(),
+            agreedTermsVersion: LegalTexts.currentTermsVersion,
+            agreedTermsAt: Date()
         )
 
         print("🔵 [USER] Saving user profile to Firestore...")

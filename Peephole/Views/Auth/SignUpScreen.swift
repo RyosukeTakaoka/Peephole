@@ -18,6 +18,9 @@ struct SignUpScreen: View {
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
+    @State private var agreedToTerms = false
+    @State private var showTerms = false
+    @State private var showPrivacyPolicy = false
     @FocusState private var focusedField: Field?
 
     enum Field {
@@ -166,6 +169,43 @@ struct SignUpScreen: View {
                     }
                     .padding(.horizontal, 24)
 
+                    // 利用規約への同意
+                    HStack(alignment: .center, spacing: 4) {
+                        Button {
+                            agreedToTerms.toggle()
+                        } label: {
+                            Image(systemName: agreedToTerms ? "checkmark.square.fill" : "square")
+                                .foregroundColor(agreedToTerms ? .blue : .secondary)
+                        }
+
+                        Button {
+                            showTerms = true
+                        } label: {
+                            Text("利用規約")
+                                .font(.system(size: 14))
+                                .foregroundColor(.blue)
+                        }
+
+                        Text("と")
+                            .font(.system(size: 14))
+                            .foregroundColor(.primary)
+
+                        Button {
+                            showPrivacyPolicy = true
+                        } label: {
+                            Text("プライバシーポリシー")
+                                .font(.system(size: 14))
+                                .foregroundColor(.blue)
+                        }
+
+                        Text("に同意します")
+                            .font(.system(size: 14))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 24)
+
                     // 登録ボタン
                     Button {
                         focusedField = nil
@@ -216,6 +256,12 @@ struct SignUpScreen: View {
                 dismiss()
             }
         }
+        .sheet(isPresented: $showTerms) {
+            TermsScreen(documentType: .terms)
+        }
+        .sheet(isPresented: $showPrivacyPolicy) {
+            TermsScreen(documentType: .privacyPolicy)
+        }
     }
 
     // MARK: - Computed Properties
@@ -231,7 +277,8 @@ struct SignUpScreen: View {
         !email.isEmpty &&
         !password.isEmpty &&
         password.count >= 6 &&
-        passwordsMatch
+        passwordsMatch &&
+        agreedToTerms
     }
 }
 
