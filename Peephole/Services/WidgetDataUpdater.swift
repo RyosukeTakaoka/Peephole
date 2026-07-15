@@ -15,6 +15,7 @@ class WidgetDataUpdater {
 
     private let followService = FollowService.shared
     private let postService = PostService.shared
+    private let blockService = BlockService.shared
 
     private init() {}
 
@@ -34,6 +35,13 @@ class WidgetDataUpdater {
             if !targetUserIds.contains(userId) {
                 targetUserIds.append(userId)
             }
+
+            // ブロック関係にあるユーザー（双方向）を除外
+            // フォロー解除で通常は消えるが、書き込み競合への防御として明示的に除外する
+            let blockedIds = try await blockService.getBlockedIds(userId: userId)
+            let blockerIds = try await blockService.getBlockerIds(userId: userId)
+            let excludedIds = Set(blockedIds).union(blockerIds)
+            targetUserIds = targetUserIds.filter { !excludedIds.contains($0) }
 
             if targetUserIds.isEmpty {
                 print("⚠️ [WIDGET] No users to fetch posts from")

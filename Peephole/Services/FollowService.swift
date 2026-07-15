@@ -44,6 +44,7 @@ enum FollowServiceError: LocalizedError {
     case cannotFollowSelf
     case unauthorizedOperation
     case userNotFound
+    case blocked
     case transactionFailed(String)
     case unknown(String)
 
@@ -61,6 +62,8 @@ enum FollowServiceError: LocalizedError {
             return "この操作を実行する権限がありません"
         case .userNotFound:
             return "ユーザーが見つかりません"
+        case .blocked:
+            return "このユーザーをフォローできません"
         case .transactionFailed(let message):
             return "トランザクションエラー: \(message)"
         case .unknown(let message):
@@ -78,6 +81,7 @@ class FollowService {
     private let followsCollection = FirebaseManager.shared.followsCollection
     private let followRequestsCollection = FirebaseManager.shared.followRequestsCollection
     private let usersCollection = FirebaseManager.shared.usersCollection
+    private let blockService = BlockService.shared
 
     private init() {}
 
@@ -90,6 +94,12 @@ class FollowService {
         // 自分自身をフォローできないチェック
         guard requesterId != targetId else {
             throw FollowServiceError.cannotFollowSelf
+        }
+
+        // ブロック関係（双方向）のチェック
+        let isBlocked = try await blockService.isBlocked(between: requesterId, and: targetId)
+        if isBlocked {
+            throw FollowServiceError.blocked
         }
 
         // 既にフォロー関係が存在するかチェック

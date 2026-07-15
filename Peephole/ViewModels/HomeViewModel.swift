@@ -40,11 +40,36 @@ class HomeViewModel: ObservableObject {
 
     private let postService = PostService.shared
     private let followService = FollowService.shared
+    private let blockService = BlockService.shared
 
     // MARK: - Private Properties
 
     private var currentUserId: String?
     private let pageSize = 20
+
+    // MARK: - Resolve Target User Ids
+
+    /// タイムライン取得対象のユーザーID一覧（フォロー中 + 自分、ブロック関係にあるユーザーを除外）を解決
+    /// - Parameter userId: 現在のユーザーID
+    private func resolveTargetUserIds(for userId: String) async throws -> [String] {
+        // フォロー中のユーザーIDを取得
+        let followingIds = try await followService.getFollowingIds(userId: userId)
+
+        // 【TODO: 動作確認用の一時的な変更】
+        // 自分自身の投稿もタイムラインに表示する
+        // 本番環境では、フォロー中のユーザーの投稿のみを表示する設計に戻す
+        var targetUserIds = followingIds
+        if !targetUserIds.contains(userId) {
+            targetUserIds.append(userId)
+        }
+
+        // ブロック関係にあるユーザー（自分がブロックした/自分をブロックした双方向）を除外
+        let blockedIds = try await blockService.getBlockedIds(userId: userId)
+        let blockerIds = try await blockService.getBlockerIds(userId: userId)
+        let excludedIds = Set(blockedIds).union(blockerIds)
+
+        return targetUserIds.filter { !excludedIds.contains($0) }
+    }
 
     // MARK: - Load Timeline
 
@@ -57,16 +82,8 @@ class HomeViewModel: ObservableObject {
         hasLoadedAll = false
 
         do {
-            // フォロー中のユーザーIDを取得
-            let followingIds = try await followService.getFollowingIds(userId: userId)
-
-            // 【TODO: 動作確認用の一時的な変更】
-            // 自分自身の投稿もタイムラインに表示する
-            // 本番環境では、フォロー中のユーザーの投稿のみを表示する設計に戻す
-            var targetUserIds = followingIds
-            if !targetUserIds.contains(userId) {
-                targetUserIds.append(userId)
-            }
+            // タイムライン取得対象のユーザーID（ブロック関係を除外）を解決
+            let targetUserIds = try await resolveTargetUserIds(for: userId)
 
             if targetUserIds.isEmpty {
                 // フォローしているユーザーがいない場合（通常ありえない）
@@ -112,16 +129,8 @@ class HomeViewModel: ObservableObject {
         hasLoadedAll = false
 
         do {
-            // フォロー中のユーザーIDを取得
-            let followingIds = try await followService.getFollowingIds(userId: userId)
-
-            // 【TODO: 動作確認用の一時的な変更】
-            // 自分自身の投稿もタイムラインに表示する
-            // 本番環境では、フォロー中のユーザーの投稿のみを表示する設計に戻す
-            var targetUserIds = followingIds
-            if !targetUserIds.contains(userId) {
-                targetUserIds.append(userId)
-            }
+            // タイムライン取得対象のユーザーID（ブロック関係を除外）を解決
+            let targetUserIds = try await resolveTargetUserIds(for: userId)
 
             if targetUserIds.isEmpty {
                 self.posts = []
@@ -166,16 +175,8 @@ class HomeViewModel: ObservableObject {
         isLoadingMore = true
 
         do {
-            // フォロー中のユーザーIDを取得
-            let followingIds = try await followService.getFollowingIds(userId: userId)
-
-            // 【TODO: 動作確認用の一時的な変更】
-            // 自分自身の投稿もタイムラインに表示する
-            // 本番環境では、フォロー中のユーザーの投稿のみを表示する設計に戻す
-            var targetUserIds = followingIds
-            if !targetUserIds.contains(userId) {
-                targetUserIds.append(userId)
-            }
+            // タイムライン取得対象のユーザーID（ブロック関係を除外）を解決
+            let targetUserIds = try await resolveTargetUserIds(for: userId)
 
             // 現在の最後の投稿の日時を取得（ページネーション用）
             // 注: Firestoreのページネーションは簡易実装（startAfterを使った実装は将来的な拡張）
@@ -240,6 +241,31 @@ class HomeViewModel: ObservableObject {
             self.errorMessage = "投稿の削除に失敗しました"
             self.showError = true
             print("❌ Failed to delete post: \(error)")
+        }
+    }
+
+    // MARK: - Block User
+
+    /// タイムライン上のユーザーをブロックする
+    /// - Parameter userId: ブロック対象のユーザーID
+    func blockUser(userId: String) async {
+        guard let currentUserId = currentUserId else { return }
+
+        do {
+            try await blockService.blockUser(blockerId: currentUserId, blockedId: userId)
+
+            // ローカルの投稿一覧から該当ユーザーの投稿を即時除去
+            self.posts.removeAll { $0.userId == userId }
+
+            print("✅ User blocked from timeline: \(userId)")
+
+            // ウィジェットデータを再生成
+            await WidgetDataUpdater.shared.updateWidgetWithFollowingPosts(userId: currentUserId)
+
+        } catch {
+            self.errorMessage = "ブロックに失敗しました"
+            self.showError = true
+            print("❌ Failed to block user: \(error)")
         }
     }
 
