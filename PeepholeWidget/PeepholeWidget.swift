@@ -42,19 +42,31 @@ struct PeepholeWidgetEntry: TimelineEntry {
 // MARK: - Timeline Provider
 struct PeepholeWidgetProvider: TimelineProvider {
     func placeholder(in context: Context) -> PeepholeWidgetEntry {
+        #if DEBUG
         let mockData = SharedDataManager.generateMockData()
         return PeepholeWidgetEntry(date: Date(), posts: mockData.posts, displayIndex: 0)
+        #else
+        return PeepholeWidgetEntry(date: Date(), posts: [], displayIndex: 0)
+        #endif
     }
 
     func getSnapshot(in context: Context, completion: @escaping (PeepholeWidgetEntry) -> Void) {
+        #if DEBUG
         let data = SharedDataManager.loadWidgetData() ?? SharedDataManager.generateMockData()
+        #else
+        let data = SharedDataManager.loadWidgetData() ?? WidgetData(posts: [], lastUpdated: Date())
+        #endif
         let entry = PeepholeWidgetEntry(date: Date(), posts: data.posts, displayIndex: 0)
         completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<PeepholeWidgetEntry>) -> Void) {
         // Load data from shared container
+        #if DEBUG
         let data = SharedDataManager.loadWidgetData() ?? SharedDataManager.generateMockData()
+        #else
+        let data = SharedDataManager.loadWidgetData() ?? WidgetData(posts: [], lastUpdated: Date())
+        #endif
 
         guard !data.posts.isEmpty else {
             // If no posts, show empty state
