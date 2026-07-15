@@ -52,6 +52,7 @@ class PostCreateViewModel: ObservableObject {
     private let cloudinaryService = CloudinaryService.shared
     private let postService = PostService.shared
     private let userService = UserService.shared
+    private let moderationService = ModerationService.shared
 
     // MARK: - Create Post
 
@@ -66,6 +67,12 @@ class PostCreateViewModel: ObservableObject {
 
         guard !postText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             showErrorMessage("投稿テキストを入力してください")
+            return
+        }
+
+        // NGワードチェック（アップロード前に検証する）
+        guard !moderationService.containsProhibitedWord(postText) else {
+            showErrorMessage("不適切な表現が含まれているため投稿できません")
             return
         }
 
