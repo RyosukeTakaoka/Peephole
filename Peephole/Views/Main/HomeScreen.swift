@@ -26,11 +26,24 @@ struct HomeScreen: View {
                 ScrollView {
                     LazyVStack(spacing: 16) {
                         ForEach(viewModel.posts) { post in
-                            PostCardView(post: post)
-                                .onAppear {
-                                    // 無限スクロール
-                                    viewModel.checkIfShouldLoadMore(for: post)
+                            PostCardView(
+                                post: post,
+                                currentUserId: authViewModel.currentUserId,
+                                onBlock: {
+                                    Task {
+                                        await viewModel.blockUser(userId: post.userId)
+                                    }
+                                },
+                                onDelete: {
+                                    Task {
+                                        await viewModel.deletePost(postId: post.postId)
+                                    }
                                 }
+                            )
+                            .onAppear {
+                                // 無限スクロール
+                                viewModel.checkIfShouldLoadMore(for: post)
+                            }
                         }
 
                         // さらに読み込み中
@@ -69,6 +82,12 @@ struct HomeScreen: View {
 struct PostCardView: View {
 
     let post: FirestorePost
+    let currentUserId: String?
+    let onBlock: () -> Void
+    let onDelete: () -> Void
+
+    @State private var showBlockConfirm = false
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -102,6 +121,23 @@ struct PostCardView: View {
                 Text(timeAgo(from: post.createdAt))
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
+
+                // メニュー（ブロック・削除）
+                Menu {
+                    if post.userId == currentUserId {
+                        Button("投稿を削除", role: .destructive) {
+                            showDeleteConfirm = true
+                        }
+                    } else {
+                        Button("このユーザーをブロック", role: .destructive) {
+                            showBlockConfirm = true
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 4)
+                }
             }
 
             // 投稿画像
@@ -153,6 +189,18 @@ struct PostCardView: View {
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         .padding(.horizontal, 16)
+        .confirmationDialog("このユーザーをブロックしますか？", isPresented: $showBlockConfirm) {
+            Button("ブロックする", role: .destructive) {
+                onBlock()
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+        .confirmationDialog("この投稿を削除しますか？", isPresented: $showDeleteConfirm) {
+            Button("削除する", role: .destructive) {
+                onDelete()
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
     }
 
     // MARK: - Time Ago Helper
