@@ -68,6 +68,27 @@ class SharedDataManager {
         }
     }
 
+    // MARK: - Clear Data
+    /// ウィジェットデータを削除する（ログアウト時・アカウント削除時に呼び出す）
+    /// 他人のデータがウィジェットに残る問題を防ぐ
+    static func clearWidgetData() {
+        guard let url = widgetDataURL else {
+            print("❌ Failed to get shared container URL")
+            return
+        }
+
+        if FileManager.default.fileExists(atPath: url.path) {
+            do {
+                try FileManager.default.removeItem(at: url)
+                print("✅ Widget data cleared")
+            } catch {
+                print("❌ Failed to clear widget data: \(error)")
+            }
+        }
+
+        reloadWidget()
+    }
+
     // MARK: - Widget Timeline Reload
     /// ウィジェットの表示を更新（タイムラインをリロード）
     /// 本体アプリ側から呼び出される

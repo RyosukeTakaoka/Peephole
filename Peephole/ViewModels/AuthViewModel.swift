@@ -205,6 +205,10 @@ class AuthViewModel: ObservableObject {
     func logout() {
         do {
             try authService.logout()
+
+            // 他人のデータがウィジェットに残らないようクリアする
+            SharedDataManager.clearWidgetData()
+
             print("✅ Logout completed")
         } catch {
             self.errorMessage = "ログアウトに失敗しました"
@@ -321,9 +325,10 @@ class AuthViewModel: ObservableObject {
 
     // MARK: - Delete Account
 
-    /// アカウント削除（将来的な拡張用）
-    /// 注意: UserServiceにdeleteUser実装後に有効化
-    func deleteAccount() async {
+    /// アカウントを削除する
+    /// 手順: ①パスワード再認証 → ②Firestoreデータ削除 → ③Firebase Authアカウント削除 → ④ウィジェットデータ削除
+    /// - Parameter password: 再認証用のパスワード
+    func deleteAccount(password: String) async {
         isLoading = true
         errorMessage = nil
 
@@ -332,15 +337,25 @@ class AuthViewModel: ObservableObject {
                 throw AuthError.userNotFound
             }
 
-            // TODO: Firestoreのユーザーデータを削除
-            // try await userService.deleteUser(userId: userId)
+            // ①パスワード再認証（Firebase Authはdelete()に直近ログインを要求するため）
+            try await authService.reauthenticate(password: password)
 
-            // Firebase Authのアカウントを削除
+            // ②Firestore上の当該ユーザー由来データをカスケード削除
+            try await userService.deleteUserData(userId: userId)
+
+            // ③Firebase Authのアカウントを削除
+            // 成功するとauth state listenerが発火し、RootViewが自動的にWelcomeScreenへ戻る
             try await authService.deleteAccount()
+
+            // ④ウィジェットデータを削除
+            SharedDataManager.clearWidgetData()
 
             print("✅ Account deleted")
 
         } catch let error as AuthError {
+            self.errorMessage = error.errorDescription
+            self.showError = true
+        } catch let error as UserServiceError {
             self.errorMessage = error.errorDescription
             self.showError = true
         } catch {
