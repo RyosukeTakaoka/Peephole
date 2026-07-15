@@ -13,12 +13,28 @@ struct SettingsScreen: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
 
+    @State private var showTerms = false
+    @State private var showPrivacyPolicy = false
+
     var body: some View {
         List {
             Section("アカウント") {
             }
 
             Section("情報") {
+                Button {
+                    showTerms = true
+                } label: {
+                    Text("利用規約")
+                        .foregroundColor(.primary)
+                }
+
+                Button {
+                    showPrivacyPolicy = true
+                } label: {
+                    Text("プライバシーポリシー")
+                        .foregroundColor(.primary)
+                }
             }
 
             Section("セッション") {
@@ -41,6 +57,12 @@ struct SettingsScreen: View {
                     dismiss()
                 }
             }
+        }
+        .sheet(isPresented: $showTerms) {
+            TermsScreen(documentType: .terms)
+        }
+        .sheet(isPresented: $showPrivacyPolicy) {
+            TermsScreen(documentType: .privacyPolicy)
         }
     }
 }
