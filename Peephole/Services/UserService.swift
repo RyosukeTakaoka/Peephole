@@ -219,6 +219,25 @@ class UserService {
         }
     }
 
+    // MARK: - Update Terms Agreement
+    /// 規約への同意記録を更新（既存ユーザーの再同意用）
+    /// - Parameters:
+    ///   - userId: ユーザーID
+    ///   - version: 同意した規約バージョン
+    func updateTermsAgreement(userId: String, version: String) async throws {
+        let updateData: [String: Any] = [
+            "agreedTermsVersion": version,
+            "agreedTermsAt": FieldValue.serverTimestamp()
+        ]
+
+        do {
+            try await usersCollection.document(userId).updateData(updateData)
+            print("✅ Terms agreement updated: \(userId) -> \(version)")
+        } catch {
+            throw UserServiceError.unknown(error.localizedDescription)
+        }
+    }
+
     // MARK: - Update Username
     /// ユーザー名を更新
     /// - Parameters:

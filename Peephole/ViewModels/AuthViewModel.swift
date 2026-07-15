@@ -28,6 +28,9 @@ class AuthViewModel: ObservableObject {
     /// 現在のユーザー情報（Firestoreから取得）
     @Published var currentUser: PeepholeUser?
 
+    /// 規約への（再）同意が必要かどうか
+    @Published var needsTermsAgreement: Bool = false
+
     /// ローディング状態
     @Published var isLoading: Bool = false
 
@@ -247,6 +250,7 @@ class AuthViewModel: ObservableObject {
         do {
             let firestoreUser = try await userService.getUserProfile(userId: userId)
             self.currentUser = firestoreUser.toPeepholeUser()
+            self.needsTermsAgreement = firestoreUser.agreedTermsVersion != LegalTexts.currentTermsVersion
             print("✅ [VIEWMODEL] Current user fetched successfully: @\(firestoreUser.username)")
         } catch let error as UserServiceError {
             print("❌ [VIEWMODEL] Failed to fetch current user - UserServiceError")
@@ -271,6 +275,23 @@ class AuthViewModel: ObservableObject {
     func refreshCurrentUser() async {
         guard let userId = currentUserId else { return }
         await fetchCurrentUser(userId: userId)
+    }
+
+    // MARK: - Agree to Current Terms
+
+    /// 現在の規約バージョンに同意する（再同意フロー用）
+    func agreeToCurrentTerms() async {
+        guard let userId = currentUserId else { return }
+
+        do {
+            try await userService.updateTermsAgreement(userId: userId, version: LegalTexts.currentTermsVersion)
+            self.needsTermsAgreement = false
+            print("✅ [VIEWMODEL] Agreed to current terms: \(LegalTexts.currentTermsVersion)")
+        } catch {
+            print("❌ [VIEWMODEL] Failed to agree to current terms: \(error)")
+            self.errorMessage = "規約への同意の保存に失敗しました"
+            self.showError = true
+        }
     }
 
     // MARK: - Validation

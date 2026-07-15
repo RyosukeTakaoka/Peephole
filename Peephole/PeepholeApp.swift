@@ -90,6 +90,10 @@ struct RootView: View {
                 // ログイン済み: メインアプリを表示
                 MainTabView()
                     .environmentObject(authViewModel)
+                    .fullScreenCover(isPresented: $authViewModel.needsTermsAgreement) {
+                        TermsAgreementScreen()
+                            .environmentObject(authViewModel)
+                    }
             } else {
                 // 未ログイン: Welcome画面を表示
                 WelcomeScreen()
