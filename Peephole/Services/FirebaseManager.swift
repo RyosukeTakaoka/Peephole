@@ -84,6 +84,10 @@ class FirebaseManager {
         return db.collection("followRequests")
     }
 
+    var blocksCollection: CollectionReference {
+        return db.collection("blocks")
+    }
+
     // MARK: - Batch Operations
     func batch() -> WriteBatch {
         return db.batch()
