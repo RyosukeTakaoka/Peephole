@@ -1,6 +1,7 @@
 # App Store 審査リジェクト対応 設計ドキュメント
 
 - 作成日: 2026-07-15
+- 最終更新: 2026-07-15（要確認事項 #3 の回答を反映: EULA は Apple 標準 LAEULA を使用、ゼロトレランス条項はアプリ内利用規約に明記）
 - 対象リジェクト: Guideline 1.2（UGC対策）/ 5.1.1(v)（アカウント削除）/ 2.1(a)（iPadボタン無反応）/ 2.1(a)（スクリーンショット）
 - 本ドキュメントは設計のみを記述する。実装コードは含まない。
 
@@ -82,11 +83,18 @@ Apple の要求 5 点（EULA / フィルタリング / 通報 / ブロック / 2
 
 ### 2.1 EULA への同意（登録前提示）
 
+#### 方針（要確認事項 #3 の回答を反映）
+
+- **EULA は Apple 標準の Licensed Application End User License Agreement（LAEULA）をそのまま使用する。** App Store Connect でカスタム EULA は設定しない（App Store Connect 側の作業は不要）。
+- **「不適切なコンテンツ・虐待的なユーザーへのゼロトレランス」条項は、アプリ内で同意を取る自前の「利用規約」に明記する**（Guideline 1.2 の明示要求はこちらで満たす）。登録前の同意ゲートはこの利用規約＋プライバシーポリシーに対して行う。
+- 利用規約には「本アプリの使用許諾は Apple 標準 EULA（https://www.apple.com/legal/internet-services/itunes/dev/stdeula/）に従う」旨の条項とリンクを含める。
+- 利用規約・プライバシーポリシーの文面ドラフトは T3 の実装内で作成する（一般的な文面。公開前に法務レビューを推奨する旨を T3 に注記）。
+
 #### 新規/変更ファイル
 
 | ファイル | 種別 | 責務 |
 |---|---|---|
-| `Peephole/Views/Legal/LegalTexts.swift` | 新規 | 利用規約（EULA）とプライバシーポリシーの本文を `static let` 文字列で保持。`static let currentTermsVersion: String`（例 `"1.0"`）を定義。規約には「不適切なコンテンツや虐待的なユーザーへのゼロトレランス（許容しない）」条項を必ず含める（Guideline 1.2 の明示要求） |
+| `Peephole/Views/Legal/LegalTexts.swift` | 新規 | 利用規約とプライバシーポリシーの本文（T3 でドラフト作成）を `static let` 文字列で保持。`static let currentTermsVersion: String`（例 `"1.0"`）を定義。EULA 本文は保持しない（Apple 標準 LAEULA を使用するため）。利用規約には①「不適切なコンテンツや虐待的なユーザーへのゼロトレランス（許容しない。コンテンツ削除・アカウント停止を行う）」条項、②Apple 標準 EULA に従う旨とリンク、を必ず含める |
 | `Peephole/Views/Legal/TermsScreen.swift` | 新規 | 規約全文を `ScrollView` で表示する画面。`enum LegalDocumentType { case terms, privacyPolicy }` を受け取り本文を切替。閉じるボタンのみ（同意ボタンは持たない、表示専用） |
 | `Peephole/Views/Auth/SignUpScreen.swift` | 変更 | 登録ボタンの上に同意チェックボックス行を追加：「[利用規約]と[プライバシーポリシー]に同意します」。リンクタップで `TermsScreen` を sheet 表示。`canSignUp` に `agreedToTerms == true` を追加（未同意時は登録ボタン無効） |
 | `Peephole/Services/UserService.swift` | 変更 | `FirestoreUser` に `agreedTermsVersion: String?` / `agreedTermsAt: Date?` を追加。`createUserProfile` で同意バージョンを書き込む。`updateTermsAgreement(userId:version:)` メソッド追加（既存ユーザーの再同意用） |
@@ -358,10 +366,12 @@ ProfileScreen → (歯車) → SettingsScreen
 ### フェーズ 3: EULA（Guideline 1.2-①）
 
 **T3. 規約文書と表示画面（LegalTexts / TermsScreen）**
-- 内容: §2.1。`LegalTexts.swift`（利用規約・プライバシーポリシー本文、`currentTermsVersion = "1.0"`）、`TermsScreen.swift`。SettingsScreen「情報」セクションに「利用規約」「プライバシーポリシー」行を追加し遷移。
+- 内容: §2.1。利用規約・プライバシーポリシーの文面ドラフトを作成し（一般的な文面。ファイル冒頭コメントに「公開前に法務レビュー推奨」と注記）、`LegalTexts.swift`（本文と `currentTermsVersion = "1.0"`）、`TermsScreen.swift` を実装。SettingsScreen「情報」セクションに「利用規約」「プライバシーポリシー」行を追加し遷移。EULA は Apple 標準 LAEULA を使用するため、アプリ内に EULA 本文は持たず App Store Connect 側の設定変更も行わない。
 - 完了条件:
   - 設定 → 利用規約 / プライバシーポリシーで全文がスクロール表示される。
   - 利用規約本文に「不適切なコンテンツ・虐待的なユーザーを許容しない（アカウント停止・コンテンツ削除を行う）」旨の条項が含まれる。
+  - 利用規約本文に「本アプリの使用許諾は Apple 標準 EULA に従う」旨の記載と `https://www.apple.com/legal/internet-services/itunes/dev/stdeula/` の URL が含まれる。
+  - プライバシーポリシーに、収集するデータ（メールアドレス、ユーザー名、投稿内容・画像）、利用目的、第三者サービス（Firebase / Cloudinary）への保存、削除方法（アプリ内アカウント削除）の記載が含まれる。
   - `LegalTexts.currentTermsVersion` が定義されている。
 
 **T4. 新規登録時の同意ゲートと同意記録**
@@ -514,17 +524,28 @@ T19（独立・提出直前で可）
 
 ---
 
-## 7. 要確認事項（質問）
+## 7. 要確認事項
 
-実装着手前に以下の回答をください。回答が不要なタスク（T1〜T5、T13 など）は先行着手可能です。
+### 7.1 回答済み（設計へ反映済み）
 
-1. **Firebase の料金プラン**: 現在 Spark（無料）か Blaze（従量課金）か。Cloud Functions による開発者通知（T17）と Cloudinary Webhook 受け口には Blaze が必要です。Blaze 化できない場合、通知は「Firestore コンソールの定期確認運用」に格下げする設計に変えます。
-2. **開発者通知の宛先**: 通報・ブロック通知を受け取るメールアドレス（App Review 回答にも「24時間以内対応」の連絡先として記載します）。
-3. **規約文面の用意**: 利用規約・プライバシーポリシーの文面は、①こちらでドラフト作成（弁護士レビューなしの一般的な文面）でよいか、②既に用意があるか。また、アプリ内静的テキストでよいか、Web ページ（URL）としてもホストするか。
-4. **Firestore セキュリティルールの現状**: リポジトリにルールファイルがありません。現在コンソールで管理しているルールの内容を共有してください（テストモードの全許可のままなら、T18 は審査再提出前に必須です）。
-5. **Cloudinary の画像モデレーション**: Cloudinary の契約プランで AWS Rekognition モデレーションアドオンが使えるか確認してください。使えない場合、画像フィルタリングは「通報 + 24時間以内の人的対応（isHidden 化）」を審査回答の主軸にします。
-6. **アカウント削除時の Cloudinary 画像**: 投稿画像・プロフィール画像を Cloudinary からも消すか（Cloud Functions + Admin API が必要）。初期リリースでは Firestore 参照のみ削除し画像はオーファンとして残す方針でよいか。
-7. **プロフィール編集の範囲**: T1 では displayName / bio / プロフィール画像のみ編集可とし、username 変更は対象外とする方針でよいか（投稿の非正規化フィールドとの整合処理が別途必要になるため）。
-8. **既存データのバックフィル**: 本番 Firestore の既存 `posts` に `isHidden: false` を一括付与する必要があります（T14）。現在の投稿件数と、コンソール手動対応でよいか（多い場合はスクリプトを用意します）。
-9. **発見タブの扱い**: T19 の通り審査提出版では発見タブを非表示にする方針でよいか。なお `UserProfileScreen`（他ユーザープロフィール）への導線が現状存在しないため、ブロック・通報 UI の主要導線はタイムラインカードのメニューになります。
-10. **iPad 実機検証**: iPad Air 11-inch (M3) / iPadOS 26.x の実機またはシミュレータでの最終確認を提出前チェックリストに含めます。手元の Xcode で該当 OS バージョンのシミュレータが利用可能か確認してください。
+3. **規約文面の用意** — 回答: ドラフト作成はこちらで行う。EULA は Apple 標準の Licensed Application End User License Agreement（LAEULA）を使用し、「不適切コンテンツへのゼロトレランス」の文言はアプリ内利用規約に別途明記する。
+   → §2.1 の方針および T3 に反映済み。アプリ内静的テキストとして実装し、App Store Connect 側の EULA 設定は変更しない。
+
+### 7.2 未回答（回答待ち）
+
+以下は回答待ち。**1・2・4 は該当タスク（T17 / T18）の着手に回答が必須**。5〜10 は未回答の場合、各項目に記載した「デフォルト方針」で実装を進める。
+
+1. **Firebase の料金プラン**（T17 の前提・回答必須）: 現在 Spark（無料）か Blaze（従量課金）か、Blaze 化を承認するか。Cloud Functions による開発者通知（T17）と Cloudinary Webhook 受け口には Blaze が必要。Blaze 化できない場合、通知は「Firestore コンソールの定期確認運用」に格下げする設計に変える。
+2. **開発者通知の宛先**（T17 の前提・回答必須）: 通報・ブロック通知を受け取るメールアドレス（App Review 回答にも「24時間以内対応」の連絡先として記載する）。
+4. **Firestore セキュリティルールの現状**（T18 の前提・回答必須）: リポジトリにルールファイルがないため、現在コンソールで管理しているルールの内容の共有が必要（テストモードの全許可のままなら、T18 は審査再提出前に必須）。
+5. **Cloudinary の画像モデレーション**: 契約プランで AWS Rekognition モデレーションアドオンが使えるか。
+   デフォルト方針: 使えない前提とし、画像フィルタリングは「通報 + 24時間以内の人的対応（isHidden 化）」を審査回答の主軸にする（T14 はこの場合も必要）。
+6. **アカウント削除時の Cloudinary 画像**: 投稿画像・プロフィール画像を Cloudinary からも消すか（Cloud Functions + Admin API が必要）。
+   デフォルト方針: 初期リリースでは Firestore 参照のみ削除し、画像はオーファンとして残す。
+7. **プロフィール編集の範囲**: username 変更を編集対象に含めるか（投稿の非正規化フィールドとの整合処理が別途必要になる）。
+   デフォルト方針: T1 では displayName / bio / プロフィール画像のみ編集可とし、username 変更は対象外。
+8. **既存データのバックフィル**: 本番 Firestore の既存 `posts` に `isHidden: false` を一括付与する必要がある（T14）。現在の投稿件数の確認。
+   デフォルト方針: コンソール手動対応（件数が多い場合はスクリプトを用意する）。
+9. **発見タブの扱い**: 審査提出版で発見タブを非表示にするか。なお `UserProfileScreen`（他ユーザープロフィール）への導線が現状存在しないため、ブロック・通報 UI の主要導線はタイムラインカードのメニューになる。
+   デフォルト方針: T19 の通り非表示にする。
+10. **iPad 実機検証**: iPad Air 11-inch (M3) / iPadOS 26.x の実機またはシミュレータでの最終確認を提出前チェックリストに含める。手元の Xcode で該当 OS バージョンのシミュレータが利用可能かの確認。
