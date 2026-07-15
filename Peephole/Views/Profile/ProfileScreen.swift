@@ -14,6 +14,7 @@ struct ProfileScreen: View {
     @EnvironmentObject var authViewModel: AuthViewModel
 
     @State private var showSettings = false
+    @State private var showEditProfile = false
 
     var body: some View {
         ZStack {
@@ -34,7 +35,7 @@ struct ProfileScreen: View {
 
                         // プロフィール編集ボタン
                         Button {
-                            // 将来的な実装: EditProfileScreenへ遷移
+                            showEditProfile = true
                         } label: {
                             Text("プロフィールを編集")
                                 .font(.system(size: 15, weight: .medium))
@@ -79,6 +80,13 @@ struct ProfileScreen: View {
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
+        }
+        .sheet(isPresented: $showEditProfile, onDismiss: {
+            Task {
+                await authViewModel.refreshCurrentUser()
+            }
+        }) {
+            EditProfileScreen(viewModel: viewModel)
         }
         .alert("エラー", isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) {}
