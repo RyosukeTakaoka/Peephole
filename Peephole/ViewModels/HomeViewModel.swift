@@ -41,6 +41,7 @@ class HomeViewModel: ObservableObject {
     private let postService = PostService.shared
     private let followService = FollowService.shared
     private let blockService = BlockService.shared
+    private let reportService = ReportService.shared
 
     // MARK: - Private Properties
 
@@ -71,6 +72,22 @@ class HomeViewModel: ObservableObject {
         return targetUserIds.filter { !excludedIds.contains($0) }
     }
 
+    // MARK: - Filter Hidden Posts
+
+    /// 通報によって非表示にした投稿を除外する
+    /// - Parameters:
+    ///   - posts: フィルタ対象の投稿一覧
+    ///   - userId: 現在のユーザーID
+    private func filterHiddenPosts(_ posts: [FirestorePost], for userId: String) async -> [FirestorePost] {
+        guard let hiddenPostIds = try? await reportService.getHiddenPostIds(userId: userId),
+              !hiddenPostIds.isEmpty else {
+            return posts
+        }
+
+        let hiddenSet = Set(hiddenPostIds)
+        return posts.filter { !hiddenSet.contains($0.postId) }
+    }
+
     // MARK: - Load Timeline
 
     /// タイムラインを読み込む（初回読み込み）
@@ -94,10 +111,13 @@ class HomeViewModel: ObservableObject {
             }
 
             // フォロー中のユーザー + 自分の投稿を取得
-            let fetchedPosts = try await postService.getTimelinePosts(
+            let rawPosts = try await postService.getTimelinePosts(
                 userIds: targetUserIds,
                 limit: pageSize
             )
+
+            // 通報して非表示にした投稿を除外
+            let fetchedPosts = await filterHiddenPosts(rawPosts, for: userId)
 
             self.posts = fetchedPosts
             self.hasLoadedAll = fetchedPosts.count < pageSize
@@ -140,10 +160,13 @@ class HomeViewModel: ObservableObject {
             }
 
             // フォロー中のユーザー + 自分の投稿を取得
-            let fetchedPosts = try await postService.getTimelinePosts(
+            let rawPosts = try await postService.getTimelinePosts(
                 userIds: targetUserIds,
                 limit: pageSize
             )
+
+            // 通報して非表示にした投稿を除外
+            let fetchedPosts = await filterHiddenPosts(rawPosts, for: userId)
 
             self.posts = fetchedPosts
             self.hasLoadedAll = fetchedPosts.count < pageSize
@@ -183,10 +206,13 @@ class HomeViewModel: ObservableObject {
             let currentCount = posts.count
 
             // 追加の投稿を取得
-            let fetchedPosts = try await postService.getTimelinePosts(
+            let rawPosts = try await postService.getTimelinePosts(
                 userIds: targetUserIds,
                 limit: pageSize + currentCount
             )
+
+            // 通報して非表示にした投稿を除外
+            let fetchedPosts = await filterHiddenPosts(rawPosts, for: userId)
 
             // 新しい投稿のみを追加
             let newPosts = Array(fetchedPosts.dropFirst(currentCount))
@@ -242,6 +268,15 @@ class HomeViewModel: ObservableObject {
             self.showError = true
             print("❌ Failed to delete post: \(error)")
         }
+    }
+
+    // MARK: - Report Post
+
+    /// 通報済みの投稿をローカルの一覧から即時除去する
+    /// - Parameter postId: 通報した投稿のID
+    func removeReportedPost(postId: String) {
+        self.posts.removeAll { $0.postId == postId }
+        print("✅ Reported post removed from timeline: \(postId)")
     }
 
     // MARK: - Block User

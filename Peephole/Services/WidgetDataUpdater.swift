@@ -16,6 +16,7 @@ class WidgetDataUpdater {
     private let followService = FollowService.shared
     private let postService = PostService.shared
     private let blockService = BlockService.shared
+    private let reportService = ReportService.shared
 
     private init() {}
 
@@ -49,7 +50,12 @@ class WidgetDataUpdater {
             }
 
             // フォロー中のユーザー + 自分の投稿を取得（ウィジェット用に最大6件）
-            let firestorePosts = try await postService.getTimelinePosts(userIds: targetUserIds, limit: 6)
+            let rawPosts = try await postService.getTimelinePosts(userIds: targetUserIds, limit: 6)
+
+            // 通報して非表示にした投稿を除外
+            let hiddenPostIds = try await reportService.getHiddenPostIds(userId: userId)
+            let hiddenSet = Set(hiddenPostIds)
+            let firestorePosts = rawPosts.filter { !hiddenSet.contains($0.postId) }
 
             // FirestorePost → Post に変換
             let widgetPosts = firestorePosts.map { $0.toPost() }

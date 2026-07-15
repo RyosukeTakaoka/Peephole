@@ -13,6 +13,8 @@ struct HomeScreen: View {
     @StateObject private var viewModel = HomeViewModel()
     @EnvironmentObject var authViewModel: AuthViewModel
 
+    @State private var reportingPost: FirestorePost?
+
     var body: some View {
         ZStack {
             if viewModel.isLoading {
@@ -38,6 +40,9 @@ struct HomeScreen: View {
                                     Task {
                                         await viewModel.deletePost(postId: post.postId)
                                     }
+                                },
+                                onReport: {
+                                    reportingPost = post
                                 }
                             )
                             .onAppear {
@@ -74,6 +79,17 @@ struct HomeScreen: View {
                 await viewModel.loadTimeline(userId: userId)
             }
         }
+        .sheet(item: $reportingPost) { post in
+            ReportScreen(
+                reporterId: authViewModel.currentUserId ?? "",
+                targetType: .post,
+                targetPostId: post.postId,
+                targetUserId: post.userId,
+                onReported: {
+                    viewModel.removeReportedPost(postId: post.postId)
+                }
+            )
+        }
     }
 }
 
@@ -85,6 +101,7 @@ struct PostCardView: View {
     let currentUserId: String?
     let onBlock: () -> Void
     let onDelete: () -> Void
+    let onReport: () -> Void
 
     @State private var showBlockConfirm = false
     @State private var showDeleteConfirm = false
@@ -131,6 +148,9 @@ struct PostCardView: View {
                     } else {
                         Button("このユーザーをブロック", role: .destructive) {
                             showBlockConfirm = true
+                        }
+                        Button("この投稿を通報") {
+                            onReport()
                         }
                     }
                 } label: {

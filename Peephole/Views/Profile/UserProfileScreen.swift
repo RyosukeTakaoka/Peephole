@@ -17,6 +17,7 @@ struct UserProfileScreen: View {
 
     @State private var showBlockConfirm = false
     @State private var showUnblockConfirm = false
+    @State private var showReportSheet = false
 
     var body: some View {
         ZStack {
@@ -94,6 +95,9 @@ struct UserProfileScreen: View {
                         Button("ブロックする", role: .destructive) {
                             showBlockConfirm = true
                         }
+                        Button("通報する") {
+                            showReportSheet = true
+                        }
                     }
                 } label: {
                     Image(systemName: "ellipsis")
@@ -115,6 +119,14 @@ struct UserProfileScreen: View {
                 }
             }
             Button("キャンセル", role: .cancel) {}
+        }
+        .sheet(isPresented: $showReportSheet) {
+            ReportScreen(
+                reporterId: authViewModel.currentUserId ?? "",
+                targetType: .user,
+                targetPostId: nil,
+                targetUserId: targetUserId
+            )
         }
         .alert("エラー", isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) {}
