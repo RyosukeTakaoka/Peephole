@@ -22,6 +22,13 @@ struct SettingsScreen: View {
                 NavigationLink("ブロックしたユーザー") {
                     BlockedUsersScreen()
                 }
+
+                NavigationLink {
+                    AccountDeleteScreen()
+                } label: {
+                    Text("アカウントを削除")
+                        .foregroundColor(.red)
+                }
             }
 
             Section("情報") {
