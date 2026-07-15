@@ -19,6 +19,9 @@ struct SettingsScreen: View {
     var body: some View {
         List {
             Section("アカウント") {
+                NavigationLink("ブロックしたユーザー") {
+                    BlockedUsersScreen()
+                }
             }
 
             Section("情報") {
