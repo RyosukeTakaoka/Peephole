@@ -2,14 +2,20 @@
 //
 // 出典: docs/review-fix-design.md §6.4（ルールセット全文）、§6.3（T20 強化版）
 // 適用タスク: T18（Firestore セキュリティルール適用。脆弱性 A の修正含む）、
-//             T14（posts.isHidden 条項の有効化）
+//             T14（posts.isHidden 条項の有効化）、
+//             T20（followRequests / follows の複合ID化とフィード注入対策）
 //
 // posts.isHidden 条項は T14 で有効化済み。適用前提として、既存 posts 全ドキュメントへの
 // isHidden: false バックフィルが完了していること（未バックフィルのドキュメントが残っていると
 // update ルールが未定義フィールド参照で評価エラー＝拒否になる）。
 //
-// followRequests / follows は T18 時点では現行のまま。複合 ID 化・exists() 検証による
-// 強化（§6.3）は T20 で適用する。
+// followRequests / follows は T20 で複合ID化（"{requesterId}_{targetId}" /
+// "{followerId}_{followingId}"）+ exists() 検証による強化版に変更済み。
+// 【適用前提・重要】このルールを適用する前に、Firestore コンソールから
+// follows / followRequests / blocks の全ドキュメントを削除（ワイプ）しておくこと。
+// 既存データは複合IDではないため、ワイプせずに適用すると当該コレクションの
+// 既存ドキュメントに対する新規操作（特に follows の create）が整合しなくなる。
+// （開発データのワイプは docs/review-fix-design.md §9.2 要確認事項 #12 で承認済み）
 
 rules_version = '2';
 service cloud.firestore {
@@ -70,16 +76,20 @@ service cloud.firestore {
       allow delete: if signedIn() && request.auth.uid == resource.data.userId;
     }
 
-    // ===== followRequests =====（T18 時点では現行のまま。T20 で §6.3 の強化版 create に差し替える）
+    // ===== followRequests =====（T20: 複合ID化 + ブロック関係のexists()検証による強化版）
     match /followRequests/{requestId} {
       allow read: if signedIn() && (
         resource.data.requesterId == request.auth.uid ||
         resource.data.targetId == request.auth.uid
       );
       allow create: if signedIn()
+        && requestId == request.resource.data.requesterId + '_' + request.resource.data.targetId
         && request.resource.data.requesterId == request.auth.uid
         && request.resource.data.targetId != request.auth.uid
-        && request.resource.data.status == 'pending';
+        && request.resource.data.status == 'pending'
+        // ブロック関係（双方向）があればサーバ側で拒否
+        && !exists(/databases/$(database)/documents/blocks/$(request.auth.uid + '_' + request.resource.data.targetId))
+        && !exists(/databases/$(database)/documents/blocks/$(request.resource.data.targetId + '_' + request.auth.uid));
       allow update: if false;
       allow delete: if signedIn() && (
         resource.data.requesterId == request.auth.uid ||
@@ -87,15 +97,19 @@ service cloud.firestore {
       );
     }
 
-    // ===== follows =====（T18 時点では現行のまま。T20 で §6.3 の強化版 create に差し替える）
+    // ===== follows =====（T20: 複合ID化 + 対応するfollowRequestのexists()検証による強化版）
     match /follows/{followId} {
       allow read: if signedIn() && (
         resource.data.followerId == request.auth.uid ||
         resource.data.followingId == request.auth.uid
       );
       allow create: if signedIn()
+        && followId == request.resource.data.followerId + '_' + request.resource.data.followingId
         && request.resource.data.followingId == request.auth.uid
-        && request.resource.data.followerId != request.auth.uid;
+        && request.resource.data.followerId != request.auth.uid
+        // 対応するフォローリクエストが存在する場合のみ作成可（フィード注入の遮断）。
+        // 承認トランザクション内ではリクエスト削除前の状態が参照されるため exists() は成立する
+        && exists(/databases/$(database)/documents/followRequests/$(request.resource.data.followerId + '_' + request.auth.uid));
       allow update: if false;
       allow delete: if signedIn() && (
         resource.data.followerId == request.auth.uid ||

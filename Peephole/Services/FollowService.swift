@@ -114,10 +114,11 @@ class FollowService {
             throw FollowServiceError.requestAlreadyExists
         }
 
-        // フォローリクエストを作成
-        let newRequestRef = followRequestsCollection.document()
+        // フォローリクエストを作成（ドキュメントIDは複合ID "{requesterId}_{targetId}"）
+        let requestId = "\(requesterId)_\(targetId)"
+        let newRequestRef = followRequestsCollection.document(requestId)
         let request = FirestoreFollowRequest(
-            requestId: newRequestRef.documentID,
+            requestId: requestId,
             requesterId: requesterId,
             targetId: targetId,
             status: .pending,
@@ -194,10 +195,11 @@ class FollowService {
                     return nil
                 }
 
-                // 2. followsコレクションに新しい関係を追加
-                let newFollowRef = self.followsCollection.document()
+                // 2. followsコレクションに新しい関係を追加（ドキュメントIDは複合ID "{followerId}_{followingId}"）
+                let followId = "\(requestData.requesterId)_\(requestData.targetId)"
+                let newFollowRef = self.followsCollection.document(followId)
                 let follow = FirestoreFollow(
-                    followId: newFollowRef.documentID,
+                    followId: followId,
                     followerId: requestData.requesterId,
                     followingId: requestData.targetId,
                     createdAt: Date()
