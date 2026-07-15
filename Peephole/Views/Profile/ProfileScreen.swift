@@ -79,7 +79,9 @@ struct ProfileScreen: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView()
+            NavigationStack {
+                SettingsScreen()
+            }
         }
         .sheet(isPresented: $showEditProfile, onDismiss: {
             Task {
@@ -229,41 +231,6 @@ struct EmptyPostsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
-    }
-}
-
-// MARK: - Settings View (簡易版)
-
-struct SettingsView: View {
-
-    @EnvironmentObject var authViewModel: AuthViewModel
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Button(role: .destructive) {
-                        authViewModel.logout()
-                        dismiss()
-                    } label: {
-                        HStack {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                            Text("ログアウト")
-                        }
-                    }
-                }
-            }
-            .navigationTitle("設定")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("閉じる") {
-                        dismiss()
-                    }
-                }
-            }
-        }
     }
 }
 
