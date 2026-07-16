@@ -90,7 +90,14 @@ struct ProfileScreen: View {
         }) {
             EditProfileScreen(viewModel: viewModel)
         }
-        .alert("エラー", isPresented: $viewModel.showError) {
+        // sheet提示中はアラートを提示しない（T22）。
+        // EditProfileScreenが同じviewModel.showErrorをバインドしており、sheet提示中に
+        // 両方が提示を試みると「already presenting」警告になり片方が表示されないため、
+        // sheet提示中はsheet側にのみアラートを提示させる
+        .alert("エラー", isPresented: Binding(
+            get: { viewModel.showError && !showEditProfile && !showSettings },
+            set: { viewModel.showError = $0 }
+        )) {
             Button("OK", role: .cancel) {}
         } message: {
             if let errorMessage = viewModel.errorMessage {

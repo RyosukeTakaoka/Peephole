@@ -49,6 +49,11 @@ class AuthViewModel: ObservableObject {
 
     private var authStateListener: AuthStateDidChangeListenerHandle?
 
+    /// サインアップ処理中はauthリスナーによる認証状態の公開を保留する（T22）
+    /// Auth作成直後にリスナーがisAuthenticatedをtrueにすると、プロフィール作成の完了前に
+    /// RootViewがMainTabViewへ遷移してしまい、エラーアラートの提示先が破棄中の画面になる
+    private var isProcessingSignUp = false
+
     // MARK: - Initialization
 
     init() {
@@ -77,6 +82,13 @@ class AuthViewModel: ObservableObject {
                 }
 
                 print("🔵 [VIEWMODEL] Auth state changed - user: \(user?.uid ?? "nil")")
+
+                // サインアップ処理中は公開を保留する（signUp()が完了時に手動で公開する）
+                if self.isProcessingSignUp {
+                    print("🔵 [VIEWMODEL] Auth state change deferred (sign-up in progress)")
+                    self.isInitializing = false
+                    return
+                }
 
                 if let user = user {
                     // ログイン中
@@ -114,6 +126,7 @@ class AuthViewModel: ObservableObject {
         print("🔵 [VIEWMODEL] signUp started")
         isLoading = true
         errorMessage = nil
+        isProcessingSignUp = true
 
         do {
             // バリデーション
@@ -128,12 +141,27 @@ class AuthViewModel: ObservableObject {
 
             // Firestoreにユーザープロフィール作成
             print("🔵 [VIEWMODEL] Creating Firestore user profile...")
-            try await userService.createUserProfile(
-                userId: userId,
-                username: username,
-                displayName: displayName,
-                email: email
-            )
+            do {
+                try await userService.createUserProfile(
+                    userId: userId,
+                    username: username,
+                    displayName: displayName,
+                    email: email
+                )
+            } catch {
+                // プロフィール作成に失敗した場合、作成済みのAuthアカウントを
+                // ロールバックして孤児アカウント化を防ぐ（作成直後のため再認証は不要）
+                print("⚠️ [VIEWMODEL] Rolling back auth account (profile creation failed)")
+                try? await authService.deleteAccount()
+                throw error
+            }
+
+            // プロフィール作成が完了してから認証状態を公開する
+            // （リスナーはisProcessingSignUp中の発火を保留済み。currentUserと
+            // needsTermsAgreementを確定させた上でRootViewをMainTabViewへ遷移させる）
+            await fetchCurrentUser(userId: userId)
+            self.currentUserId = userId
+            self.isAuthenticated = true
 
             print("✅ [VIEWMODEL] Sign up completed successfully: \(userId)")
 
@@ -163,6 +191,7 @@ class AuthViewModel: ObservableObject {
             self.showError = true
         }
 
+        isProcessingSignUp = false
         isLoading = false
         print("🔵 [VIEWMODEL] signUp completed (isLoading = false)")
     }
