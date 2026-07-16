@@ -124,9 +124,12 @@ class HomeViewModel: ObservableObject {
 
             print("✅ Timeline loaded: \(fetchedPosts.count) posts")
 
-            // タイムラインのデータをウィジェットにも反映
+            // ウィジェットにも反映（画像ダウンロードを伴うためバックグラウンドで実行。
+            // T21で updateWidgetWithFollowingPosts に一本化）
             if !fetchedPosts.isEmpty {
-                WidgetDataUpdater.shared.updateWidgetWithTimelinePosts(firestorePosts: fetchedPosts)
+                Task {
+                    await WidgetDataUpdater.shared.updateWidgetWithFollowingPosts(userId: userId)
+                }
             }
 
         } catch {
@@ -173,9 +176,12 @@ class HomeViewModel: ObservableObject {
 
             print("✅ Timeline refreshed: \(fetchedPosts.count) posts")
 
-            // タイムラインのデータをウィジェットにも反映
+            // ウィジェットにも反映（画像ダウンロードを伴うためバックグラウンドで実行。
+            // T21で updateWidgetWithFollowingPosts に一本化）
             if !fetchedPosts.isEmpty {
-                WidgetDataUpdater.shared.updateWidgetWithTimelinePosts(firestorePosts: fetchedPosts)
+                Task {
+                    await WidgetDataUpdater.shared.updateWidgetWithFollowingPosts(userId: userId)
+                }
             }
 
         } catch {

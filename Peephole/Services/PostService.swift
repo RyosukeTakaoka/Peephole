@@ -30,7 +30,8 @@ struct FirestorePost: Codable, Identifiable {
     var id: String { postId }
 
     // Models.swift の Post に変換
-    func toPost() -> Post {
+    // localImageFileName / localProfileImageFileName: 事前ダウンロード済み画像のファイル名（T21）
+    func toPost(localImageFileName: String? = nil, localProfileImageFileName: String? = nil) -> Post {
         return Post(
             id: postId,
             userId: userId,
@@ -40,7 +41,9 @@ struct FirestorePost: Codable, Identifiable {
             createdAt: createdAt,
             userName: userName,
             userDisplayName: userDisplayName,
-            userProfileImageURL: userProfileImageURL
+            userProfileImageURL: userProfileImageURL,
+            localImageFileName: localImageFileName,
+            localProfileImageFileName: localProfileImageFileName
         )
     }
 }

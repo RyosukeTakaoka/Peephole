@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 #if !APPCLIP
 import WidgetKit
 #endif
@@ -68,6 +69,57 @@ class SharedDataManager {
         }
     }
 
+    // MARK: - Widget Images
+    // WidgetKitはビューをスナップショットとして描画するため、AsyncImageによる
+    // ネットワーク取得は完了が保証されない。本体アプリ側で画像を事前ダウンロードして
+    // App Group内 widgetImages/ に保存し、ウィジェットは同期読み込みで描画する。
+
+    private static var widgetImagesDirectoryURL: URL? {
+        sharedContainerURL?.appendingPathComponent("widgetImages", isDirectory: true)
+    }
+
+    /// widgetImages ディレクトリを作成して返す（本体アプリのダウンロード処理用）
+    static func ensureWidgetImagesDirectory() -> URL? {
+        guard let dir = widgetImagesDirectoryURL else { return nil }
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    /// 指定ファイル名の画像が保存済みかどうか
+    static func widgetImageExists(fileName: String) -> Bool {
+        guard let url = widgetImagesDirectoryURL?.appendingPathComponent(fileName) else { return false }
+        return FileManager.default.fileExists(atPath: url.path)
+    }
+
+    /// 保存済みのウィジェット画像を読み込む（ウィジェット側から同期呼び出し）
+    static func loadWidgetImage(fileName: String) -> UIImage? {
+        guard let url = widgetImagesDirectoryURL?.appendingPathComponent(fileName),
+              let data = try? Data(contentsOf: url) else {
+            return nil
+        }
+        return UIImage(data: data)
+    }
+
+    /// 使用中のファイル名以外を削除する（表示対象から外れた投稿の画像を掃除）
+    static func pruneWidgetImages(keeping fileNames: Set<String>) {
+        guard let dir = widgetImagesDirectoryURL,
+              let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else {
+            return
+        }
+        for file in files where !fileNames.contains(file.lastPathComponent) {
+            try? FileManager.default.removeItem(at: file)
+        }
+    }
+
+    /// ウィジェット画像を全削除する
+    private static func clearWidgetImages() {
+        guard let dir = widgetImagesDirectoryURL,
+              FileManager.default.fileExists(atPath: dir.path) else {
+            return
+        }
+        try? FileManager.default.removeItem(at: dir)
+    }
+
     // MARK: - Clear Data
     /// ウィジェットデータを削除する（ログアウト時・アカウント削除時に呼び出す）
     /// 他人のデータがウィジェットに残る問題を防ぐ
@@ -86,6 +138,7 @@ class SharedDataManager {
             }
         }
 
+        clearWidgetImages()
         reloadWidget()
     }
 
