@@ -72,9 +72,10 @@ class BlockService {
         let blockId = compositeBlockId(blockerId: blockerId, blockedId: blockedId)
         let blockRef = blocksCollection.document(blockId)
 
-        // 二重ブロックチェック（事前クエリ。既存 unfollow と同じ構成）
-        let existingBlock = try await blockRef.getDocument()
-        if existingBlock.exists {
+        // 二重ブロックチェック（list クエリで判定。存在しない blocks ドキュメントへの
+        // point get は read ルールの resource.data 参照で拒否されるため使用しない）
+        let alreadyBlockedIds = try await getBlockedIds(userId: blockerId)
+        if alreadyBlockedIds.contains(blockedId) {
             throw BlockServiceError.alreadyBlocked
         }
 
@@ -233,18 +234,18 @@ class BlockService {
     ///   - otherUserId: 相手ユーザーID
     /// - Returns: どちらかの方向にブロックが存在すればtrue
     func isBlocked(between userId: String, and otherUserId: String) async throws -> Bool {
+        // 存在しない blocks ドキュメントへの point get は read ルールの resource.data 参照で
+        // 拒否されるため、単一フィールドの list クエリ（getBlockedIds / getBlockerIds）で判定する
         do {
-            let forward = try await blocksCollection
-                .document(compositeBlockId(blockerId: userId, blockedId: otherUserId))
-                .getDocument()
-            if forward.exists {
+            // userId → otherUserId 方向のブロック
+            let blockedIds = try await getBlockedIds(userId: userId)
+            if blockedIds.contains(otherUserId) {
                 return true
             }
 
-            let backward = try await blocksCollection
-                .document(compositeBlockId(blockerId: otherUserId, blockedId: userId))
-                .getDocument()
-            return backward.exists
+            // otherUserId → userId 方向のブロック
+            let blockerIds = try await getBlockerIds(userId: userId)
+            return blockerIds.contains(otherUserId)
         } catch {
             throw BlockServiceError.unknown(error.localizedDescription)
         }
