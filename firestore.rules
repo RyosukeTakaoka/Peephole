@@ -1,0 +1,150 @@
+// Peephole Firestore セキュリティルール
+//
+// 出典: docs/review-fix-design.md §6.4（ルールセット全文）、§6.3（T20 強化版）
+// 適用タスク: T18（Firestore セキュリティルール適用。脆弱性 A の修正含む）、
+//             T14（posts.isHidden 条項の有効化）、
+//             T20（followRequests / follows の複合ID化とフィード注入対策）
+//
+// posts.isHidden 条項は T14 で有効化済み。適用前提として、既存 posts 全ドキュメントへの
+// isHidden: false バックフィルが完了していること（未バックフィルのドキュメントが残っていると
+// update ルールが未定義フィールド参照で評価エラー＝拒否になる）。
+//
+// followRequests / follows は T20 で複合ID化（"{requesterId}_{targetId}" /
+// "{followerId}_{followingId}"）+ exists() 検証による強化版に変更済み。
+// 【適用前提・重要】このルールを適用する前に、Firestore コンソールから
+// follows / followRequests / blocks の全ドキュメントを削除（ワイプ）しておくこと。
+// 既存データは複合IDではないため、ワイプせずに適用すると当該コレクションの
+// 既存ドキュメントに対する新規操作（特に follows の create）が整合しなくなる。
+// （開発データのワイプは docs/review-fix-design.md §9.2 要確認事項 #12 で承認済み）
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // 他人による users 更新は、フォロー承認/解除・ブロック・退会処理でのカウンタ増減のみ。
+    // 1回の書き込みにつき各カウンタ ±1・結果非負に制限する（脆弱性 A の修正）
+    function isValidCounterUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['followersCount', 'followingCount'])
+        && (request.resource.data.followersCount - resource.data.followersCount) in [-1, 0, 1]
+        && (request.resource.data.followingCount - resource.data.followingCount) in [-1, 0, 1]
+        && request.resource.data.followersCount >= 0
+        && request.resource.data.followingCount >= 0;
+    }
+
+    // ===== users =====
+    match /users/{userId} {
+      // 検索・プロフィール表示のため認証済みユーザーは読み取り可
+      // （注意: email も読める。現状維持の割り切り。将来はドキュメント分離で改善）
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.followersCount == 0
+        && request.resource.data.followingCount == 0
+        && request.resource.data.postsCount == 0;
+      allow update: if signedIn() && (
+        request.auth.uid == userId ||
+        isValidCounterUpdate()
+      );
+      // アカウント削除（T15）: 「Firestore 削除 → Auth 削除」の順のため本人 auth は有効
+      allow delete: if signedIn() && request.auth.uid == userId;
+
+      // ===== users/{userId}/hiddenPosts =====（通報者の非表示リスト）
+      match /hiddenPosts/{postId} {
+        allow read, create, delete: if signedIn() && request.auth.uid == userId;
+        allow update: if false;
+      }
+    }
+
+    // ===== posts =====
+    // T14 で isHidden 条項を有効化済み。
+    // 前提: 既存の posts 全ドキュメントに isHidden: false のバックフィルが完了していること
+    // （未バックフィルのドキュメントが残っていると、下記 update ルールが
+    // resource.data.isHidden の未定義参照で評価エラー＝拒否になる）。
+    match /posts/{postId} {
+      // 開発段階: 認証済みなら読み取り可（鍵アカ制御はアプリ側ロジック。現状維持）
+      allow read: if signedIn();
+      // isHidden はクライアントからは常に false でのみ作成可能
+      allow create: if signedIn() && request.auth.uid == request.resource.data.userId
+        && request.resource.data.isHidden == false;
+      // isHidden は運営専用（コンソール / Admin SDK はルール対象外）。投稿者による自己解除を防ぐ
+      allow update: if signedIn() && request.auth.uid == resource.data.userId
+        && request.resource.data.isHidden == resource.data.isHidden;
+      allow delete: if signedIn() && request.auth.uid == resource.data.userId;
+    }
+
+    // ===== followRequests =====（T20: 複合ID化 + ブロック関係のexists()検証による強化版）
+    match /followRequests/{requestId} {
+      allow read: if signedIn() && (
+        resource.data.requesterId == request.auth.uid ||
+        resource.data.targetId == request.auth.uid
+      );
+      allow create: if signedIn()
+        && requestId == request.resource.data.requesterId + '_' + request.resource.data.targetId
+        && request.resource.data.requesterId == request.auth.uid
+        && request.resource.data.targetId != request.auth.uid
+        && request.resource.data.status == 'pending'
+        // ブロック関係（双方向）があればサーバ側で拒否
+        && !exists(/databases/$(database)/documents/blocks/$(request.auth.uid + '_' + request.resource.data.targetId))
+        && !exists(/databases/$(database)/documents/blocks/$(request.resource.data.targetId + '_' + request.auth.uid));
+      allow update: if false;
+      allow delete: if signedIn() && (
+        resource.data.requesterId == request.auth.uid ||
+        resource.data.targetId == request.auth.uid
+      );
+    }
+
+    // ===== follows =====（T20: 複合ID化 + 対応するfollowRequestのexists()検証による強化版）
+    match /follows/{followId} {
+      allow read: if signedIn() && (
+        resource.data.followerId == request.auth.uid ||
+        resource.data.followingId == request.auth.uid
+      );
+      allow create: if signedIn()
+        && followId == request.resource.data.followerId + '_' + request.resource.data.followingId
+        && request.resource.data.followingId == request.auth.uid
+        && request.resource.data.followerId != request.auth.uid
+        // 対応するフォローリクエストが存在する場合のみ作成可（フィード注入の遮断）。
+        // 承認トランザクション内ではリクエスト削除前の状態が参照されるため exists() は成立する
+        && exists(/databases/$(database)/documents/followRequests/$(request.resource.data.followerId + '_' + request.auth.uid));
+      allow update: if false;
+      allow delete: if signedIn() && (
+        resource.data.followerId == request.auth.uid ||
+        resource.data.followingId == request.auth.uid
+      );
+    }
+
+    // ===== blocks =====（新規）
+    match /blocks/{blockId} {
+      // 当事者のみ読み取り可（ブロックされた側の読み取りは getBlockerIds のフィード防御で使用）
+      allow read: if signedIn() && (
+        resource.data.blockerId == request.auth.uid ||
+        resource.data.blockedId == request.auth.uid
+      );
+      // 作成は blocker 本人のみ。複合 ID 一致を強制（二重ブロックは ID 衝突で失敗）
+      allow create: if signedIn()
+        && request.resource.data.blockerId == request.auth.uid
+        && request.resource.data.blockedId != request.auth.uid
+        && blockId == request.resource.data.blockerId + '_' + request.resource.data.blockedId
+        && request.resource.data.notified == false;
+      // notified の更新は通知スクリプト（Admin SDK・ルール対象外）のみ
+      allow update: if false;
+      // 削除（= ブロック解除）は blocker のみ。ブロックされた側の自己解除・退会時の削除は不可
+      allow delete: if signedIn() && resource.data.blockerId == request.auth.uid;
+    }
+
+    // ===== reports =====（新規）
+    match /reports/{reportId} {
+      // 作成は通報者本人のみ。初期状態（pending・未通知）を強制
+      allow create: if signedIn()
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.notified == false;
+      // 閲覧・対応は運営のみ（Firebase コンソール / Admin SDK はルール対象外）
+      allow read, update, delete: if false;
+    }
+  }
+}

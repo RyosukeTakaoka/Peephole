@@ -38,6 +38,7 @@ class ProfileViewModel: ObservableObject {
     private let userService = UserService.shared
     private let postService = PostService.shared
     private let cloudinaryService = CloudinaryService.shared
+    private let moderationService = ModerationService.shared
 
     // MARK: - Private Properties
 
@@ -108,6 +109,18 @@ class ProfileViewModel: ObservableObject {
     ///   - bio: 自己紹介
     func updateProfile(displayName: String?, bio: String?) async {
         guard let userId = currentUserId else { return }
+
+        // NGワードチェック
+        if let displayName = displayName, moderationService.containsProhibitedWord(displayName) {
+            self.errorMessage = "不適切な表現が含まれているため保存できません"
+            self.showError = true
+            return
+        }
+        if let bio = bio, moderationService.containsProhibitedWord(bio) {
+            self.errorMessage = "不適切な表現が含まれているため保存できません"
+            self.showError = true
+            return
+        }
 
         isLoading = true
         errorMessage = nil

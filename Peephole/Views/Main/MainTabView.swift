@@ -3,7 +3,7 @@
 //  Peephole
 //
 //  メインアプリのタブバー構成
-//  ホーム、発見、投稿、通知、プロフィールの5つのタブ
+//  ホーム、投稿、通知、プロフィールの4つのタブ
 //
 
 import SwiftUI
@@ -26,15 +26,6 @@ struct MainTabView: View {
                 Label("ホーム", systemImage: selectedTab == 0 ? "house.fill" : "house")
             }
             .tag(0)
-
-            // 2. 発見（ユーザー検索）- 将来的な実装
-            NavigationStack {
-                DiscoverPlaceholderScreen()
-            }
-            .tabItem {
-                Label("発見", systemImage: selectedTab == 1 ? "magnifyingglass.circle.fill" : "magnifyingglass")
-            }
-            .tag(1)
 
             // 3. 投稿作成（モーダル表示）
             Color.clear
@@ -82,28 +73,6 @@ struct MainTabView: View {
                 await notificationsViewModel.loadFollowRequests(userId: userId)
             }
         }
-    }
-}
-
-// MARK: - Discover Placeholder Screen
-
-struct DiscoverPlaceholderScreen: View {
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "magnifyingglass.circle")
-                .font(.system(size: 60))
-                .foregroundColor(.gray)
-
-            Text("発見")
-                .font(.system(size: 24, weight: .bold))
-
-            Text("ユーザー検索機能は\n今後実装予定です")
-                .font(.system(size: 16))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .navigationTitle("発見")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

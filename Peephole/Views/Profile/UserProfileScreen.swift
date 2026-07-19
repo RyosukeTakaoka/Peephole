@@ -15,6 +15,10 @@ struct UserProfileScreen: View {
     @StateObject private var viewModel = UserProfileViewModel()
     @EnvironmentObject var authViewModel: AuthViewModel
 
+    @State private var showBlockConfirm = false
+    @State private var showUnblockConfirm = false
+    @State private var showReportSheet = false
+
     var body: some View {
         ZStack {
             if viewModel.isLoading {
@@ -53,7 +57,7 @@ struct UserProfileScreen: View {
                         }
                         .background(viewModel.followStatus.buttonColor)
                         .cornerRadius(8)
-                        .disabled(viewModel.isFollowActionInProgress)
+                        .disabled(viewModel.isFollowActionInProgress || viewModel.isBlockedByMe)
                         .padding(.horizontal, 16)
 
                         // 投稿一覧
@@ -80,6 +84,50 @@ struct UserProfileScreen: View {
         }
         .navigationTitle("プロフィール")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    if viewModel.isBlockedByMe {
+                        Button("ブロック解除") {
+                            showUnblockConfirm = true
+                        }
+                    } else {
+                        Button("ブロックする", role: .destructive) {
+                            showBlockConfirm = true
+                        }
+                        Button("通報する") {
+                            showReportSheet = true
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                }
+            }
+        }
+        .confirmationDialog("このユーザーをブロックしますか？", isPresented: $showBlockConfirm) {
+            Button("ブロックする", role: .destructive) {
+                Task {
+                    await viewModel.blockUser()
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+        .confirmationDialog("ブロックを解除しますか？", isPresented: $showUnblockConfirm) {
+            Button("ブロック解除") {
+                Task {
+                    await viewModel.unblockUser()
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+        .sheet(isPresented: $showReportSheet) {
+            ReportScreen(
+                reporterId: authViewModel.currentUserId ?? "",
+                targetType: .user,
+                targetPostId: nil,
+                targetUserId: targetUserId
+            )
+        }
         .alert("エラー", isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) {}
         } message: {

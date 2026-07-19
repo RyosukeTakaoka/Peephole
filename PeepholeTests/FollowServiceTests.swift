@@ -118,6 +118,10 @@ final class FollowServiceTests: XCTestCase {
                 XCTAssertEqual(requests.first?.targetId, testUserB, "リクエスト受信者が正しいこと")
                 XCTAssertEqual(requests.first?.status, .pending, "ステータスがpendingであること")
 
+                // T20: ドキュメントIDが複合ID "{requesterId}_{targetId}" 形式であることを確認
+                let expectedRequestId = "\(self.testUserA)_\(self.testUserB)"
+                XCTAssertEqual(requests.first?.requestId, expectedRequestId, "requestIdが複合ID形式であること")
+
                 print("✅ Test 1 Passed: Follow request created successfully")
                 expectation.fulfill()
             } catch {
@@ -173,6 +177,11 @@ final class FollowServiceTests: XCTestCase {
                     followingId: testUserB
                 )
                 XCTAssertTrue(isFollowing, "フォロー関係が作成されていること")
+
+                // T20: followsドキュメントのIDが複合ID "{followerId}_{followingId}" 形式であることを確認
+                let expectedFollowId = "\(self.testUserA)_\(self.testUserB)"
+                let followDoc = try await self.db.collection("follows").document(expectedFollowId).getDocument()
+                XCTAssertTrue(followDoc.exists, "followsドキュメントが複合IDで作成されていること")
 
                 // 4. 検証: 統計情報が正しく更新されたか
                 let userAAfter = try await userService.getUserProfile(userId: testUserA)

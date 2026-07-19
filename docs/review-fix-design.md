@@ -850,3 +850,118 @@ T19（独立・提出直前で可）
     → T17 は 30 分間隔の schedule で実装する。
 14. **T20（複合 ID 化とルール強化）の採否** — 回答: **採用**。
     → 正式タスクとして §0 / §8 に組み込み済み（「任意」表記を削除）。
+
+---
+
+## 10. 追補: T1〜T20 実装後の障害対応（2026-07-15 追記）
+
+T1〜T20 の実装・データワイプ後の実機検証で2件の障害が確認された。調査の結果いずれも
+T1〜T20 のコード変更による回帰ではなく、初期実装から存在した潜在欠陥が顕在化したもの。
+対応を T21 / T22 として追加する。
+
+### 10.1 T21: ウィジェット画像のローカルファイル配信
+
+**症状**: ウィジェットでユーザー名・テキストは表示されるが写真部分だけグレーになる。
+アプリ内タイムラインでは同一の画像（thumbnailURL）が正常表示される。
+
+**原因**: ウィジェットの3ビュー（Small/Medium/Large）が `AsyncImage` によるネットワーク
+取得で画像を描画していた。WidgetKit はビューをスナップショット（アーカイブ）として事前
+レンダリングするため、非同期のネットワーク取得はスナップショット確定までに完了する保証が
+なく、キャッシュの温まり具合に依存する不安定な動作だった（Initial Commit 由来の潜在欠陥）。
+Firestore 全ワイプによる画像URL刷新・ウィジェット再追加によるキャッシュ消去で恒常的に
+顕在化した。git 履歴上、描画チェーン（WidgetView / Provider / Models / JSONコーデック /
+サムネURL生成）は T1〜T20 で無変更であることを確認済み。
+
+**対応（実装済み）**:
+
+| ファイル | 変更 |
+|---|---|
+| `Models.swift` | `Post` に `localImageFileName` / `localProfileImageFileName`（いずれも Optional。既存 widgetData.json とデコード互換）を追加 |
+| `SharedDataManager.swift` | App Group 内 `widgetImages/` の作成・読み込み（`loadWidgetImage`）・掃除（`pruneWidgetImages`）ヘルパを追加。`clearWidgetData()` で画像も全削除 |
+| `WidgetDataUpdater.swift` | 投稿サムネイル（`{postId}.jpg`）・プロフィール画像（`{postId}_profile.jpg`、w_100変換）を保存前に URLSession でダウンロードし、ファイル名を `Post` に格納。保存済みならスキップ。表示対象外の画像は prune。**`updateWidgetWithTimelinePosts` は廃止し `updateWidgetWithFollowingPosts` に一本化**（2経路が同一ファイルを上書きし合う競合も解消） |
+| `HomeViewModel.swift` | 廃止した同期メソッドの呼び出し2箇所を、バックグラウンド Task での `updateWidgetWithFollowingPosts` 呼び出しに置換 |
+| Small/Medium/LargeWidgetView | ローカルファイルの同期読み込み（`Image(uiImage:)`）を優先し、ファイルが無い場合のみ従来の `AsyncImage` にフォールバック（DEBUG モックデータの表示互換とオフライン時の劣化パス維持） |
+
+**失敗モード**: ダウンロード失敗した投稿はファイル名 nil → 従来同様のプレースホルダ表示
+（悪化なし）。次回のウィジェット更新でリトライされる。
+
+### 10.2 T22: アラート二重提示と認証遷移競合の修正
+
+**症状**: 新規登録直後に
+`Attempt to present <PlatformAlertController> on <UIHostingController> which is already presenting <PresentationHostingController>`
+の警告。動作は継続するが、二重提示に負けた側のアラートは表示されない（エラー時に画面が
+無反応になり得る＝Guideline 2.1(a) と同型の UX 欠陥）。
+
+**原因（構造）**:
+1. 同一の共有 `@Published showError` を、同時にマウントされる複数ビューが `.alert` バインド
+   している（ProfileScreen + EditProfileScreen が同一 ProfileViewModel を sheet の
+   presenter/presented 両側でバインド、`authViewModel.showError` を4画面がバインド、等）。
+2. `isAuthenticated` が `signUp()` 完了前に auth リスナー経由で true になり、プロフィール
+   作成中に画面階層が差し替わる。この間のエラーはアラートホスト不在/破棄中となる。
+   また、プロフィール作成失敗時（ユーザー名重複等）に Auth アカウントだけが残る
+   孤児アカウント問題も併存していた。
+
+**対応（最小修正）**:
+- `ProfileScreen`: アラートの `isPresented` を「sheet 非提示時のみ有効」な派生 Binding にし、
+  sheet 提示中は sheet 側（EditProfileScreen）のアラートにのみ提示させる。
+- `AuthViewModel`: サインアップ処理中は auth リスナーによる認証状態の公開を保留し、
+  `createUserProfile` 完了後に手動で公開する（遷移の順序制御）。プロフィール作成失敗時は
+  `authService.deleteAccount()` で Auth アカウントをロールバックし孤児化を防ぐ。
+
+### 10.3 T23: ユーザー検索画面（UserProfileScreen への到達導線）※設計のみ・実装未着手
+
+**背景**: `UserProfileScreen`（他ユーザーのプロフィール。フォロー/ブロック/通報の起点）は
+実装済みだが、アプリのどこからも遷移できない（§1.3 で自認していた既知の状態。T19 で削除した
+「発見」タブはプレースホルダ文言のみで検索 UI は元々存在しなかった）。このままでは
+①フォロー機能（アプリの中核ループ）自体が開始不能、②T6〜T13 で実装したユーザー単位の
+ブロック・通報に到達できず Guideline 1.2 の導線要件を満たせない、③審査提出用の画面録画が
+撮影できない。
+
+**配置の設計判断**: 「発見」タブの復活ではなく、**ホーム画面（タイムライン）の
+ナビゲーションバー右上に検索アイコン（`magnifyingglass`）を置き、そこから検索画面へ
+push 遷移**する。理由: (a) タブ復活は MainTabView の tag 再配線（T19 変更の一部巻き戻し）と
+スクリーンショット構成への影響を伴う、(b) 検索単機能をタブとして常設すると画面が薄く
+「未完成」（Guideline 2.1）の印象リスクがある、(c) ホームは「友達を見つけてフォローする」
+動線として自然で、`NavigationStack` 内 push のため `UserProfileScreen` への遷移も既存構造の
+まま成立する。
+
+**新規/変更ファイル**:
+
+| ファイル | 種別 | 責務 |
+|---|---|---|
+| `Peephole/Views/Search/UserSearchScreen.swift` | 新規 | ユーザー検索画面。検索フィールド（`.searchable`、送信時に検索実行）＋結果リスト（プロフィール画像・表示名・@username。`BlockedUsersScreen` の行と同パターン）。行タップで `NavigationLink` により `UserProfileScreen(targetUserId:)` へ遷移。状態は3つ: 検索前の案内表示（「ユーザー名で検索できます」等。**「今後実装予定」等のプレースホルダ文言は一切含めない**）/ 0件の空状態 / ローディング |
+| `Peephole/ViewModels/UserSearchViewModel.swift` | 新規 | `@MainActor ObservableObject`。検索クエリ・結果 `[FirestoreUser]`・`isLoading`・エラー状態を保持。`search(query:currentUserId:)` が `UserService.searchUsers(query:)` を呼び、**自分自身を結果から除外**する |
+| `Peephole/Views/Main/HomeScreen.swift` | 変更 | toolbar 右に検索アイコンを追加し、`navigationDestination(isPresented:)` で `UserSearchScreen` へ push（WelcomeScreen と同パターン） |
+
+**データアクセス**: 既存 `UserService.searchUsers(query:)`（`username` の前方一致、最大20件）を
+そのまま使用。`username` 単一フィールドの range クエリのため**複合インデックス追加は不要**、
+`users` の read はルール上 `signedIn()` で許可済みのため**セキュリティルール変更も不要**。
+
+**検索実行タイミング**: 送信時（キーボードの検索ボタン）のみ実行し、キーストロークごとの
+逐次検索（debounce）は行わない。Spark プランの読み取りクォータ消費を抑えるため。
+
+**スコープ外（既知の制限として許容）**:
+- 前方一致のみ・大文字小文字を区別する（`searchUsers` の既存仕様。部分一致化は Firestore の
+  制約上、別基盤が必要なため公開後の改善課題）
+- 「自分をブロックしているユーザー」の結果からの除外はしない（プロフィールを開いてフォローを
+  試みると §2.2 の設計通り「このユーザーをフォローできません」の汎用文言になる。ブロックの
+  存在を明示しない方針とも整合）
+- ページネーション（20件固定で足りる規模）
+
+**完了条件**:
+- ホーム右上の検索アイコン → 検索画面が push 表示される。
+- ユーザー名の前方一致で検索でき、結果に表示名・@username・プロフィール画像が表示される。
+- 結果行のタップで `UserProfileScreen` が開き、フォローリクエスト送信・ブロック・通報の
+  既存メニューがそのまま機能する（= Guideline 1.2 の導線が閉じる）。
+- 自分自身は検索結果に表示されない。
+- 検索前は案内表示、0件時は空状態表示。プレースホルダ文言（「今後実装予定」等）を含まない。
+- Firestore ルール・インデックスの変更なしで動作する。
+
+**規模**: 新規2ファイル＋HomeScreen の toolbar 追加で計 150〜200 行程度。1コミット。
+
+**審査への影響**: **提出前に必須級**。①ユーザー単位のブロック・通報（Guideline 1.2 の要求
+機能）が初めて実際に到達可能になる、②フォローというアプリの中核ループが開始可能になる
+（現状は誰もフォローできず、タイムライン・ウィジェットに自分の投稿しか流れない）、
+③App Review へのデモ動画・Review Notes に「ホーム右上の検索 → プロフィール → メニューから
+ブロック/通報」という具体的導線を記載できる。タブ構成は変わらないため既存スクリーン
+ショット計画への影響は軽微。

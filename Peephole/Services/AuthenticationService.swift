@@ -16,6 +16,7 @@ enum AuthError: LocalizedError {
     case userNotFound
     case wrongPassword
     case networkError
+    case requiresRecentLogin
     case unknown(String)
 
     var errorDescription: String? {
@@ -32,6 +33,8 @@ enum AuthError: LocalizedError {
             return "パスワードが間違っています"
         case .networkError:
             return "ネットワークエラーが発生しました"
+        case .requiresRecentLogin:
+            return "セキュリティのため再ログインが必要です"
         case .unknown(let message):
             return "エラーが発生しました: \(message)"
         }
@@ -124,6 +127,27 @@ class AuthenticationService {
         return auth.currentUser != nil
     }
 
+    // MARK: - Reauthenticate
+    /// パスワード再入力による再認証（アカウント削除等、直近ログインが要求される操作の前に実行）
+    /// - Parameter password: 現在のパスワード
+    func reauthenticate(password: String) async throws {
+        guard let user = auth.currentUser, let email = user.email else {
+            throw AuthError.userNotFound
+        }
+
+        let credential = EmailAuthProvider.credential(withEmail: email, password: password)
+
+        do {
+            try await user.reauthenticate(with: credential)
+            print("✅ [AUTH] User reauthenticated")
+        } catch let error as NSError {
+            print("❌ [AUTH] reauthenticate failed")
+            print("   - Error code: \(error.code)")
+            print("   - Error domain: \(error.domain)")
+            throw mapAuthError(error)
+        }
+    }
+
     // MARK: - Delete Account
     /// アカウントを削除（将来的な拡張用）
     func deleteAccount() async throws {
@@ -159,6 +183,8 @@ class AuthenticationService {
             return .wrongPassword
         case .networkError:
             return .networkError
+        case .requiresRecentLogin:
+            return .requiresRecentLogin
         default:
             return .unknown(error.localizedDescription)
         }

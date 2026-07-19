@@ -1,0 +1,47 @@
+name: Moderation Notifier
+
+# reports / blocks の notified == false なドキュメントを検出し、
+# 開発者へメール通知する（T17）。24時間以内のモデレーション対応SLAを支えるジョブ。
+#
+# 必要なリポジトリ Secrets:
+#   FIREBASE_SERVICE_ACCOUNT_JSON : Firebase サービスアカウントの JSON（Firestoreアクセス用）
+#   SMTP_HOST / SMTP_PORT / SMTP_SECURE / SMTP_USER / SMTP_PASS : 通知メール送信用のSMTP認証情報
+#   SMTP_FROM (任意) : 送信元アドレス（未設定時は SMTP_USER を使用）
+
+on:
+  schedule:
+    # 30分間隔（UTC基準のcron）。Actions無料枠が逼迫する場合は "*/60 * * * *" に変更する。
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scripts/moderation-notifier
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: scripts/moderation-notifier/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run moderation notifier
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_SECURE: ${{ secrets.SMTP_SECURE }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+        run: npm start

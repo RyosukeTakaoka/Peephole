@@ -31,23 +31,35 @@ struct PostCardView: View {
         GeometryReader { geometry in
             ZStack(alignment: .bottomLeading) {
                 // Background image
-                AsyncImage(url: URL(string: post.imageURL)) { phase in
-                    switch phase {
-                    case .empty:
-                        Color.gray.opacity(0.3)
-                    case .success(let image):
-                        image
+                // T21: 事前ダウンロード済みのローカル画像を優先（WidgetKitではAsyncImageの
+                // ネットワーク取得が保証されないため）。無い場合のみAsyncImageにフォールバック
+                Group {
+                    if let fileName = post.localImageFileName,
+                       let uiImage = SharedDataManager.loadWidgetImage(fileName: fileName) {
+                        Image(uiImage: uiImage)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                             .frame(width: geometry.size.width, height: geometry.size.height)
-                    case .failure:
-                        Color.gray.opacity(0.3)
-                            .overlay(
-                                Image(systemName: "photo")
-                                    .foregroundColor(.white)
-                            )
-                    @unknown default:
-                        Color.gray.opacity(0.3)
+                    } else {
+                        AsyncImage(url: URL(string: post.imageURL)) { phase in
+                            switch phase {
+                            case .empty:
+                                Color.gray.opacity(0.3)
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: geometry.size.width, height: geometry.size.height)
+                            case .failure:
+                                Color.gray.opacity(0.3)
+                                    .overlay(
+                                        Image(systemName: "photo")
+                                            .foregroundColor(.white)
+                                    )
+                            @unknown default:
+                                Color.gray.opacity(0.3)
+                            }
+                        }
                     }
                 }
                 .clipped()
@@ -67,14 +79,23 @@ struct PostCardView: View {
                     // User info
                     HStack(spacing: 4) {
                         if let profileURL = post.userProfileImageURL {
-                            AsyncImage(url: URL(string: profileURL)) { phase in
-                                if let image = phase.image {
-                                    image
+                            Group {
+                                if let fileName = post.localProfileImageFileName,
+                                   let uiImage = SharedDataManager.loadWidgetImage(fileName: fileName) {
+                                    Image(uiImage: uiImage)
                                         .resizable()
                                         .aspectRatio(contentMode: .fill)
                                 } else {
-                                    Circle()
-                                        .fill(Color.white.opacity(0.3))
+                                    AsyncImage(url: URL(string: profileURL)) { phase in
+                                        if let image = phase.image {
+                                            image
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fill)
+                                        } else {
+                                            Circle()
+                                                .fill(Color.white.opacity(0.3))
+                                        }
+                                    }
                                 }
                             }
                             .frame(width: 16, height: 16)

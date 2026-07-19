@@ -23,6 +23,8 @@ struct FirestoreUser: Codable, Identifiable {
     var postsCount: Int
     let createdAt: Date
     var updatedAt: Date
+    var agreedTermsVersion: String?
+    var agreedTermsAt: Date?
 
     // Identifiable準拠のため、userIdをidとして使用
     var id: String { userId }
@@ -65,6 +67,10 @@ class UserService {
 
     private let db = FirebaseManager.shared.db
     private let usersCollection = FirebaseManager.shared.usersCollection
+    private let postsCollection = FirebaseManager.shared.postsCollection
+    private let followsCollection = FirebaseManager.shared.followsCollection
+    private let followRequestsCollection = FirebaseManager.shared.followRequestsCollection
+    private let blocksCollection = FirebaseManager.shared.blocksCollection
 
     private init() {}
 
@@ -127,7 +133,9 @@ class UserService {
             followingCount: 0,
             postsCount: 0,
             createdAt: Date(),
-            updatedAt: Date()
+            updatedAt: Date(),
+            agreedTermsVersion: LegalTexts.currentTermsVersion,
+            agreedTermsAt: Date()
         )
 
         print("🔵 [USER] Saving user profile to Firestore...")
@@ -215,6 +223,25 @@ class UserService {
         }
     }
 
+    // MARK: - Update Terms Agreement
+    /// 規約への同意記録を更新（既存ユーザーの再同意用）
+    /// - Parameters:
+    ///   - userId: ユーザーID
+    ///   - version: 同意した規約バージョン
+    func updateTermsAgreement(userId: String, version: String) async throws {
+        let updateData: [String: Any] = [
+            "agreedTermsVersion": version,
+            "agreedTermsAt": FieldValue.serverTimestamp()
+        ]
+
+        do {
+            try await usersCollection.document(userId).updateData(updateData)
+            print("✅ Terms agreement updated: \(userId) -> \(version)")
+        } catch {
+            throw UserServiceError.unknown(error.localizedDescription)
+        }
+    }
+
     // MARK: - Update Username
     /// ユーザー名を更新
     /// - Parameters:
@@ -292,6 +319,134 @@ class UserService {
             print("✅ User stats updated: \(field) by \(increment)")
         } catch {
             throw UserServiceError.unknown(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Delete User Data
+    /// アカウント削除時に、当該ユーザー由来のFirestoreデータをカスケード削除する
+    /// Auth アカウント削除の**前**に呼び出すこと（削除後はルール上書き込めなくなるため）
+    /// - Parameter userId: 削除対象のユーザーID
+    func deleteUserData(userId: String) async throws {
+        do {
+            // 1. posts（userId == 自分）を削除
+            try await deletePosts(ownedBy: userId)
+
+            // 2. follows（followerId == 自分）を削除し、相手のfollowersCountを-1
+            try await deleteFollows(followerId: userId)
+
+            // 3. follows（followingId == 自分）を削除し、相手のfollowingCountを-1
+            try await deleteFollows(followingId: userId)
+
+            // 4. followRequests（requesterId/targetId == 自分）を削除
+            try await deleteFollowRequests(userId: userId)
+
+            // 5. blocks（blockerId == 自分）を削除。blockedId == 自分のものは残置する
+            try await deleteBlocks(blockerId: userId)
+
+            // 6. users/{uid}/hiddenPosts サブコレクションを削除
+            try await deleteHiddenPosts(userId: userId)
+
+            // 7. users/{uid} 本体を削除
+            try await usersCollection.document(userId).delete()
+
+            // 8. reports は削除しない（モデレーション記録として保持）
+
+            print("✅ [USER] User data deleted: \(userId)")
+        } catch {
+            throw UserServiceError.unknown(error.localizedDescription)
+        }
+    }
+
+    /// posts（userId == 自分）を500件ずつのWriteBatchで削除
+    private func deletePosts(ownedBy userId: String) async throws {
+        let snapshot = try await postsCollection
+            .whereField("userId", isEqualTo: userId)
+            .getDocuments()
+
+        var batch = db.batch()
+        var operationCount = 0
+
+        for document in snapshot.documents {
+            batch.deleteDocument(document.reference)
+            operationCount += 1
+
+            if operationCount == 500 {
+                try await batch.commit()
+                batch = db.batch()
+                operationCount = 0
+            }
+        }
+
+        if operationCount > 0 {
+            try await batch.commit()
+        }
+    }
+
+    /// follows（followerId == 自分）を削除し、フォローされていた相手のfollowersCountを-1する
+    private func deleteFollows(followerId userId: String) async throws {
+        let snapshot = try await followsCollection
+            .whereField("followerId", isEqualTo: userId)
+            .getDocuments()
+
+        for document in snapshot.documents {
+            guard let follow = try? document.data(as: FirestoreFollow.self) else { continue }
+            try await followsCollection.document(document.documentID).delete()
+            try await incrementUserStats(userId: follow.followingId, field: "followersCount", by: -1)
+        }
+    }
+
+    /// follows（followingId == 自分）を削除し、フォローしていた相手のfollowingCountを-1する
+    private func deleteFollows(followingId userId: String) async throws {
+        let snapshot = try await followsCollection
+            .whereField("followingId", isEqualTo: userId)
+            .getDocuments()
+
+        for document in snapshot.documents {
+            guard let follow = try? document.data(as: FirestoreFollow.self) else { continue }
+            try await followsCollection.document(document.documentID).delete()
+            try await incrementUserStats(userId: follow.followerId, field: "followingCount", by: -1)
+        }
+    }
+
+    /// followRequests（requesterId または targetId == 自分）を削除
+    private func deleteFollowRequests(userId: String) async throws {
+        let asRequester = try await followRequestsCollection
+            .whereField("requesterId", isEqualTo: userId)
+            .getDocuments()
+
+        let asTarget = try await followRequestsCollection
+            .whereField("targetId", isEqualTo: userId)
+            .getDocuments()
+
+        for document in asRequester.documents {
+            try await followRequestsCollection.document(document.documentID).delete()
+        }
+
+        for document in asTarget.documents {
+            try await followRequestsCollection.document(document.documentID).delete()
+        }
+    }
+
+    /// blocks（blockerId == 自分）を削除。blockedId == 自分のものは
+    /// セキュリティルール上削除できない（許可すると自己解除の穴になる）ため残置する
+    private func deleteBlocks(blockerId userId: String) async throws {
+        let snapshot = try await blocksCollection
+            .whereField("blockerId", isEqualTo: userId)
+            .getDocuments()
+
+        for document in snapshot.documents {
+            try await blocksCollection.document(document.documentID).delete()
+        }
+    }
+
+    /// users/{uid}/hiddenPosts サブコレクションを削除
+    private func deleteHiddenPosts(userId: String) async throws {
+        let snapshot = try await usersCollection.document(userId)
+            .collection("hiddenPosts")
+            .getDocuments()
+
+        for document in snapshot.documents {
+            try await document.reference.delete()
         }
     }
 

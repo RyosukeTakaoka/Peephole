@@ -14,6 +14,7 @@ struct ProfileScreen: View {
     @EnvironmentObject var authViewModel: AuthViewModel
 
     @State private var showSettings = false
+    @State private var showEditProfile = false
 
     var body: some View {
         ZStack {
@@ -34,7 +35,7 @@ struct ProfileScreen: View {
 
                         // プロフィール編集ボタン
                         Button {
-                            // 将来的な実装: EditProfileScreenへ遷移
+                            showEditProfile = true
                         } label: {
                             Text("プロフィールを編集")
                                 .font(.system(size: 15, weight: .medium))
@@ -78,9 +79,25 @@ struct ProfileScreen: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView()
+            NavigationStack {
+                SettingsScreen()
+            }
         }
-        .alert("エラー", isPresented: $viewModel.showError) {
+        .sheet(isPresented: $showEditProfile, onDismiss: {
+            Task {
+                await authViewModel.refreshCurrentUser()
+            }
+        }) {
+            EditProfileScreen(viewModel: viewModel)
+        }
+        // sheet提示中はアラートを提示しない（T22）。
+        // EditProfileScreenが同じviewModel.showErrorをバインドしており、sheet提示中に
+        // 両方が提示を試みると「already presenting」警告になり片方が表示されないため、
+        // sheet提示中はsheet側にのみアラートを提示させる
+        .alert("エラー", isPresented: Binding(
+            get: { viewModel.showError && !showEditProfile && !showSettings },
+            set: { viewModel.showError = $0 }
+        )) {
             Button("OK", role: .cancel) {}
         } message: {
             if let errorMessage = viewModel.errorMessage {
@@ -221,41 +238,6 @@ struct EmptyPostsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
-    }
-}
-
-// MARK: - Settings View (簡易版)
-
-struct SettingsView: View {
-
-    @EnvironmentObject var authViewModel: AuthViewModel
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Button(role: .destructive) {
-                        authViewModel.logout()
-                        dismiss()
-                    } label: {
-                        HStack {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                            Text("ログアウト")
-                        }
-                    }
-                }
-            }
-            .navigationTitle("設定")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("閉じる") {
-                        dismiss()
-                    }
-                }
-            }
-        }
     }
 }
 

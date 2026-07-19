@@ -50,9 +50,11 @@ struct PeepholeApp: App {
 
     init() {
         print("🔵 [APP] PeepholeApp init() started")
-        // 【開発中】初回起動時のみモックデータを表示
+        #if DEBUG
+        // 【開発中のみ】初回起動時のみモックデータを表示（DEBUGビルド限定）
         // 実際の投稿を作成すると、ウィジェットは実データに切り替わります
         setupMockDataIfNeeded()
+        #endif
         print("✅ [APP] PeepholeApp init() completed")
     }
 
@@ -63,6 +65,7 @@ struct PeepholeApp: App {
         }
     }
 
+    #if DEBUG
     private func setupMockDataIfNeeded() {
         // ウィジェットデータが存在しない場合のみ、初回起動時にモックデータを表示
         // 投稿を作成すると、実データで上書きされます
@@ -72,6 +75,7 @@ struct PeepholeApp: App {
             print("📦 Mock data initialized for widget (will be replaced by real data after first post)")
         }
     }
+    #endif
 }
 
 // MARK: - Root View
@@ -90,6 +94,10 @@ struct RootView: View {
                 // ログイン済み: メインアプリを表示
                 MainTabView()
                     .environmentObject(authViewModel)
+                    .fullScreenCover(isPresented: $authViewModel.needsTermsAgreement) {
+                        TermsAgreementScreen()
+                            .environmentObject(authViewModel)
+                    }
             } else {
                 // 未ログイン: Welcome画面を表示
                 WelcomeScreen()

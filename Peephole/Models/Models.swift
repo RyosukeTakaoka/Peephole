@@ -47,6 +47,13 @@ struct Post: Codable, Identifiable {
     let userDisplayName: String
     let userProfileImageURL: String?
 
+    // 事前ダウンロード済み画像のファイル名（App Group内 widgetImages/ 配下）
+    // WidgetKitはスナップショット描画のためAsyncImageによるネットワーク取得が保証されない。
+    // 本体アプリ側でダウンロードした画像をウィジェットが同期読み込みするために使用する。
+    // Optionalのため、フィールドを持たない既存のwidgetData.jsonもデコード互換。
+    let localImageFileName: String?
+    let localProfileImageFileName: String?
+
     init(id: String,
          userId: String,
          imageURL: String,
@@ -55,7 +62,9 @@ struct Post: Codable, Identifiable {
          createdAt: Date,
          userName: String,
          userDisplayName: String,
-         userProfileImageURL: String? = nil) {
+         userProfileImageURL: String? = nil,
+         localImageFileName: String? = nil,
+         localProfileImageFileName: String? = nil) {
         self.id = id
         self.userId = userId
         self.imageURL = imageURL
@@ -65,6 +74,8 @@ struct Post: Codable, Identifiable {
         self.userName = userName
         self.userDisplayName = userDisplayName
         self.userProfileImageURL = userProfileImageURL
+        self.localImageFileName = localImageFileName
+        self.localProfileImageFileName = localProfileImageFileName
     }
 }
 

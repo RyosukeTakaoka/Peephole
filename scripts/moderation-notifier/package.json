@@ -1,0 +1,14 @@
+{
+  "name": "moderation-notifier",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Peephole: 未通知のreports/blocksを検出し開発者へメール通知するスクリプト（T17）",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "nodemailer": "^6.9.14"
+  }
+}

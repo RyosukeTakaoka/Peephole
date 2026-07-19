@@ -28,6 +28,9 @@ class AuthViewModel: ObservableObject {
     /// 現在のユーザー情報（Firestoreから取得）
     @Published var currentUser: PeepholeUser?
 
+    /// 規約への（再）同意が必要かどうか
+    @Published var needsTermsAgreement: Bool = false
+
     /// ローディング状態
     @Published var isLoading: Bool = false
 
@@ -45,6 +48,11 @@ class AuthViewModel: ObservableObject {
     // MARK: - Private Properties
 
     private var authStateListener: AuthStateDidChangeListenerHandle?
+
+    /// サインアップ処理中はauthリスナーによる認証状態の公開を保留する（T22）
+    /// Auth作成直後にリスナーがisAuthenticatedをtrueにすると、プロフィール作成の完了前に
+    /// RootViewがMainTabViewへ遷移してしまい、エラーアラートの提示先が破棄中の画面になる
+    private var isProcessingSignUp = false
 
     // MARK: - Initialization
 
@@ -74,6 +82,13 @@ class AuthViewModel: ObservableObject {
                 }
 
                 print("🔵 [VIEWMODEL] Auth state changed - user: \(user?.uid ?? "nil")")
+
+                // サインアップ処理中は公開を保留する（signUp()が完了時に手動で公開する）
+                if self.isProcessingSignUp {
+                    print("🔵 [VIEWMODEL] Auth state change deferred (sign-up in progress)")
+                    self.isInitializing = false
+                    return
+                }
 
                 if let user = user {
                     // ログイン中
@@ -111,6 +126,7 @@ class AuthViewModel: ObservableObject {
         print("🔵 [VIEWMODEL] signUp started")
         isLoading = true
         errorMessage = nil
+        isProcessingSignUp = true
 
         do {
             // バリデーション
@@ -125,12 +141,27 @@ class AuthViewModel: ObservableObject {
 
             // Firestoreにユーザープロフィール作成
             print("🔵 [VIEWMODEL] Creating Firestore user profile...")
-            try await userService.createUserProfile(
-                userId: userId,
-                username: username,
-                displayName: displayName,
-                email: email
-            )
+            do {
+                try await userService.createUserProfile(
+                    userId: userId,
+                    username: username,
+                    displayName: displayName,
+                    email: email
+                )
+            } catch {
+                // プロフィール作成に失敗した場合、作成済みのAuthアカウントを
+                // ロールバックして孤児アカウント化を防ぐ（作成直後のため再認証は不要）
+                print("⚠️ [VIEWMODEL] Rolling back auth account (profile creation failed)")
+                try? await authService.deleteAccount()
+                throw error
+            }
+
+            // プロフィール作成が完了してから認証状態を公開する
+            // （リスナーはisProcessingSignUp中の発火を保留済み。currentUserと
+            // needsTermsAgreementを確定させた上でRootViewをMainTabViewへ遷移させる）
+            await fetchCurrentUser(userId: userId)
+            self.currentUserId = userId
+            self.isAuthenticated = true
 
             print("✅ [VIEWMODEL] Sign up completed successfully: \(userId)")
 
@@ -160,6 +191,7 @@ class AuthViewModel: ObservableObject {
             self.showError = true
         }
 
+        isProcessingSignUp = false
         isLoading = false
         print("🔵 [VIEWMODEL] signUp completed (isLoading = false)")
     }
@@ -202,6 +234,10 @@ class AuthViewModel: ObservableObject {
     func logout() {
         do {
             try authService.logout()
+
+            // 他人のデータがウィジェットに残らないようクリアする
+            SharedDataManager.clearWidgetData()
+
             print("✅ Logout completed")
         } catch {
             self.errorMessage = "ログアウトに失敗しました"
@@ -247,6 +283,7 @@ class AuthViewModel: ObservableObject {
         do {
             let firestoreUser = try await userService.getUserProfile(userId: userId)
             self.currentUser = firestoreUser.toPeepholeUser()
+            self.needsTermsAgreement = firestoreUser.agreedTermsVersion != LegalTexts.currentTermsVersion
             print("✅ [VIEWMODEL] Current user fetched successfully: @\(firestoreUser.username)")
         } catch let error as UserServiceError {
             print("❌ [VIEWMODEL] Failed to fetch current user - UserServiceError")
@@ -271,6 +308,23 @@ class AuthViewModel: ObservableObject {
     func refreshCurrentUser() async {
         guard let userId = currentUserId else { return }
         await fetchCurrentUser(userId: userId)
+    }
+
+    // MARK: - Agree to Current Terms
+
+    /// 現在の規約バージョンに同意する（再同意フロー用）
+    func agreeToCurrentTerms() async {
+        guard let userId = currentUserId else { return }
+
+        do {
+            try await userService.updateTermsAgreement(userId: userId, version: LegalTexts.currentTermsVersion)
+            self.needsTermsAgreement = false
+            print("✅ [VIEWMODEL] Agreed to current terms: \(LegalTexts.currentTermsVersion)")
+        } catch {
+            print("❌ [VIEWMODEL] Failed to agree to current terms: \(error)")
+            self.errorMessage = "規約への同意の保存に失敗しました"
+            self.showError = true
+        }
     }
 
     // MARK: - Validation
@@ -300,9 +354,10 @@ class AuthViewModel: ObservableObject {
 
     // MARK: - Delete Account
 
-    /// アカウント削除（将来的な拡張用）
-    /// 注意: UserServiceにdeleteUser実装後に有効化
-    func deleteAccount() async {
+    /// アカウントを削除する
+    /// 手順: ①パスワード再認証 → ②Firestoreデータ削除 → ③Firebase Authアカウント削除 → ④ウィジェットデータ削除
+    /// - Parameter password: 再認証用のパスワード
+    func deleteAccount(password: String) async {
         isLoading = true
         errorMessage = nil
 
@@ -311,15 +366,25 @@ class AuthViewModel: ObservableObject {
                 throw AuthError.userNotFound
             }
 
-            // TODO: Firestoreのユーザーデータを削除
-            // try await userService.deleteUser(userId: userId)
+            // ①パスワード再認証（Firebase Authはdelete()に直近ログインを要求するため）
+            try await authService.reauthenticate(password: password)
 
-            // Firebase Authのアカウントを削除
+            // ②Firestore上の当該ユーザー由来データをカスケード削除
+            try await userService.deleteUserData(userId: userId)
+
+            // ③Firebase Authのアカウントを削除
+            // 成功するとauth state listenerが発火し、RootViewが自動的にWelcomeScreenへ戻る
             try await authService.deleteAccount()
+
+            // ④ウィジェットデータを削除
+            SharedDataManager.clearWidgetData()
 
             print("✅ Account deleted")
 
         } catch let error as AuthError {
+            self.errorMessage = error.errorDescription
+            self.showError = true
+        } catch let error as UserServiceError {
             self.errorMessage = error.errorDescription
             self.showError = true
         } catch {
