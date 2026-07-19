@@ -14,6 +14,7 @@ struct HomeScreen: View {
     @EnvironmentObject var authViewModel: AuthViewModel
 
     @State private var reportingPost: FirestorePost?
+    @State private var showUserSearch = false
 
     var body: some View {
         ZStack {
@@ -66,6 +67,19 @@ struct HomeScreen: View {
         }
         .navigationTitle("ホーム")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showUserSearch = true
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                }
+            }
+        }
+        .navigationDestination(isPresented: $showUserSearch) {
+            UserSearchScreen()
+                .environmentObject(authViewModel)
+        }
         .alert("エラー", isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) {}
         } message: {
