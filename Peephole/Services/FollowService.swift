@@ -426,8 +426,9 @@ class FollowService {
     }
 
     // MARK: - Check Existing Request
-    /// 既存のフォローリクエストを確認
-    private func checkExistingRequest(requesterId: String, targetId: String) async throws -> FirestoreFollowRequest? {
+    /// 既存の（自分が送信した）pending フォローリクエストを確認
+    /// requesterId == 自分 を制約に含むため followRequests の read ルールを満たす
+    func checkExistingRequest(requesterId: String, targetId: String) async throws -> FirestoreFollowRequest? {
         let querySnapshot = try await followRequestsCollection
             .whereField("requesterId", isEqualTo: requesterId)
             .whereField("targetId", isEqualTo: targetId)

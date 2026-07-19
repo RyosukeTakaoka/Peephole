@@ -151,11 +151,15 @@ class UserProfileViewModel: ObservableObject {
                 return
             }
 
-            // リクエスト送信済みかチェック
-            let pendingRequests = try await followService.getPendingFollowRequests(targetId: targetUserId)
-            let hasRequestFromCurrentUser = pendingRequests.contains { $0.requesterId == currentUserId }
+            // 自分が送信済みの pending リクエストがあるかチェック
+            // （requesterId == 自分 を制約に含むクエリ。targetId == 相手 の一覧取得は
+            //  followRequests の read ルールを満たさず拒否されるため使用しない）
+            let existingRequest = try await followService.checkExistingRequest(
+                requesterId: currentUserId,
+                targetId: targetUserId
+            )
 
-            if hasRequestFromCurrentUser {
+            if existingRequest != nil {
                 self.followStatus = .requestPending
             } else {
                 self.followStatus = .notFollowing
