@@ -9,6 +9,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import GoogleMobileAds
 
 @MainActor
 class HomeViewModel: ObservableObject {
@@ -16,7 +17,14 @@ class HomeViewModel: ObservableObject {
     // MARK: - Published Properties
 
     /// タイムラインの投稿一覧
-    @Published var posts: [FirestorePost] = []
+    /// 変更されるたびに、広告を混ぜた表示用配列（feedItems）を組み直す
+    @Published var posts: [FirestorePost] = [] {
+        didSet { rebuildFeedItems() }
+    }
+
+    /// フィード表示用のアイテム列（投稿 + 広告を混在させたもの）
+    /// Viewはこの配列を回して、投稿セルと広告セルを出し分ける
+    @Published var feedItems: [FeedItem] = []
 
     /// ローディング状態
     @Published var isLoading: Bool = false
@@ -43,10 +51,60 @@ class HomeViewModel: ObservableObject {
     private let blockService = BlockService.shared
     private let reportService = ReportService.shared
 
+    /// ネイティブ広告の事前ロードを管理するマネージャ
+    private let adManager = NativeAdManager()
+
     // MARK: - Private Properties
 
     private var currentUserId: String?
     private let pageSize = 20
+
+    /// 広告の在庫更新を監視するための購読
+    private var cancellables = Set<AnyCancellable>()
+
+    // MARK: - Init
+
+    init() {
+        // 広告の在庫（loadedAds）が更新されたらフィードを組み直す
+        adManager.$loadedAds
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.rebuildFeedItems()
+            }
+            .store(in: &cancellables)
+
+        // 起動時にネイティブ広告を事前ロードしておく（表示時にすぐ差し込めるように）
+        adManager.preload()
+    }
+
+    // MARK: - Build Feed Items
+
+    /// 投稿配列と広告在庫を混ぜて、表示用のアイテム列（feedItems）を組み立てる。
+    /// 投稿を feedAdInterval 件並べるごとに、在庫から広告を1件差し込む。
+    /// 差し込み位置は投稿のインデックスから決まるため、ページング（追加読み込み）で
+    /// 投稿が末尾に増えても、既存部分の並びは崩れない。
+    private func rebuildFeedItems() {
+        let ads = adManager.loadedAds
+        var items: [FeedItem] = []
+        var adIndex = 0
+
+        for (index, post) in posts.enumerated() {
+            items.append(.post(post))
+
+            // 投稿を interval 件並べた区切り（インデックス4, 9, 14...）で広告を1件挟む。
+            // 在庫が足りないときは差し込まない（フィードは投稿だけで成立する）。
+            let isAdSlot = (index + 1) % AdConfig.feedAdInterval == 0
+            if isAdSlot && adIndex < ads.count {
+                items.append(.ad(id: "feed-ad-\(adIndex)", nativeAd: ads[adIndex]))
+                adIndex += 1
+            }
+        }
+
+        self.feedItems = items
+
+        // 在庫が残り少なくなったら追加で事前ロードしておく
+        adManager.preloadMoreIfNeeded(remaining: ads.count - adIndex)
+    }
 
     // MARK: - Resolve Target User Ids
 

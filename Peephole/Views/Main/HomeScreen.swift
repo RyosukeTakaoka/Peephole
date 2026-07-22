@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import GoogleMobileAds
 
 struct HomeScreen: View {
 
@@ -28,27 +29,35 @@ struct HomeScreen: View {
                 // タイムライン表示
                 ScrollView {
                     LazyVStack(spacing: 16) {
-                        ForEach(viewModel.posts) { post in
-                            PostCardView(
-                                post: post,
-                                currentUserId: authViewModel.currentUserId,
-                                onBlock: {
-                                    Task {
-                                        await viewModel.blockUser(userId: post.userId)
+                        // 投稿と広告を混ぜた表示用アイテム列を回す
+                        ForEach(viewModel.feedItems) { item in
+                            switch item {
+                            case .post(let post):
+                                PostCardView(
+                                    post: post,
+                                    currentUserId: authViewModel.currentUserId,
+                                    onBlock: {
+                                        Task {
+                                            await viewModel.blockUser(userId: post.userId)
+                                        }
+                                    },
+                                    onDelete: {
+                                        Task {
+                                            await viewModel.deletePost(postId: post.postId)
+                                        }
+                                    },
+                                    onReport: {
+                                        reportingPost = post
                                     }
-                                },
-                                onDelete: {
-                                    Task {
-                                        await viewModel.deletePost(postId: post.postId)
-                                    }
-                                },
-                                onReport: {
-                                    reportingPost = post
+                                )
+                                .onAppear {
+                                    // 無限スクロール（判定は投稿に対してのみ行う）
+                                    viewModel.checkIfShouldLoadMore(for: post)
                                 }
-                            )
-                            .onAppear {
-                                // 無限スクロール
-                                viewModel.checkIfShouldLoadMore(for: post)
+
+                            case .ad(_, let nativeAd):
+                                // ネイティブ広告セル
+                                NativeAdCardView(nativeAd: nativeAd)
                             }
                         }
 
