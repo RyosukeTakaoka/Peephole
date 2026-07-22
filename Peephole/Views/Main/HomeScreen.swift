@@ -97,6 +97,10 @@ struct HomeScreen: View {
             }
         }
         .task {
+            // ネイティブ広告の事前ロードを開始（View表示のタイミングで確実に走らせる）。
+            // ユーザーの有無に関係なく呼べるよう、認証チェックの外に置く。
+            viewModel.loadAds()
+
             // 初回読み込み
             if let userId = authViewModel.currentUserId {
                 await viewModel.loadTimeline(userId: userId)

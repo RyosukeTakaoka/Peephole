@@ -57,8 +57,13 @@ final class NativeAdManager: NSObject, ObservableObject {
     /// ネイティブ広告をまとめて事前ロードする。
     /// - Parameter count: 一度に取得する件数（デフォルトは AdConfig.preloadAdCount）
     func preload(count: Int = AdConfig.preloadAdCount) {
+        print("🟣 [AD] preload() 呼び出し（isLoading=\(isLoading) / 使用ID=\(AdConfig.nativeAdUnitID)）")
+
         // すでにロード中なら重複リクエストしない
-        guard !isLoading else { return }
+        guard !isLoading else {
+            print("⚠️ [AD] すでにロード中のため今回のリクエストはスキップ")
+            return
+        }
         isLoading = true
 
         // 複数件をまとめて取得するためのオプション（1リクエストで最大5件）
@@ -70,9 +75,14 @@ final class NativeAdManager: NSObject, ObservableObject {
         let viewOptions = NativeAdViewAdOptions()
         viewOptions.preferredAdChoicesPosition = .topLeftCorner
 
+        // ネイティブ広告の読み込みにはクリック遷移用の rootViewController が望ましいが、
+        // nil でもロード自体は可能。取得できているかをログで確認できるようにする。
+        let rootVC = Self.topViewController()
+        print("🟣 [AD] AdLoader生成（rootViewController=\(rootVC == nil ? "nil" : "取得OK")）")
+
         let loader = AdLoader(
             adUnitID: AdConfig.nativeAdUnitID,
-            rootViewController: Self.topViewController(),
+            rootViewController: rootVC,
             adTypes: [.native],
             options: [multipleAdsOptions, viewOptions]
         )
@@ -116,7 +126,10 @@ extension NativeAdManager: NativeAdLoaderDelegate {
     /// ロードに失敗したときに呼ばれる
     func adLoader(_ adLoader: AdLoader, didFailToReceiveAdWithError error: Error) {
         isLoading = false
-        print("❌ [AD] ネイティブ広告のロード失敗: \(error.localizedDescription)")
+        // 原因切り分けのため、ドメイン・コードまで含めて出力する
+        let nsError = error as NSError
+        print("❌ [AD] ネイティブ広告のロード失敗: \(error.localizedDescription) "
+            + "(domain=\(nsError.domain), code=\(nsError.code))")
     }
 
     /// バッチ（複数件）のロードがすべて完了したときに呼ばれる

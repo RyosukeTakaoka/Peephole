@@ -65,6 +65,8 @@ class HomeViewModel: ObservableObject {
     // MARK: - Init
 
     init() {
+        print("🟣 [AD] HomeViewModel.init()（広告在庫の監視を開始）")
+
         // 広告の在庫（loadedAds）が更新されたらフィードを組み直す
         adManager.$loadedAds
             .receive(on: DispatchQueue.main)
@@ -74,6 +76,16 @@ class HomeViewModel: ObservableObject {
             .store(in: &cancellables)
 
         // 起動時にネイティブ広告を事前ロードしておく（表示時にすぐ差し込めるように）
+        loadAds()
+    }
+
+    // MARK: - Load Ads
+
+    /// ネイティブ広告の事前ロードを開始する。
+    /// init だけに頼らず、View の表示時（.task / .onAppear）からも呼べるようにして、
+    /// 「ロードが一度も走らない」事故を防ぐ。何度呼んでも安全（ロード中なら内部でスキップ）。
+    func loadAds() {
+        print("🟣 [AD] loadAds() 呼び出し（現在の在庫: \(adManager.loadedAds.count)件）")
         adManager.preload()
     }
 
@@ -101,6 +113,8 @@ class HomeViewModel: ObservableObject {
         }
 
         self.feedItems = items
+
+        print("🟣 [AD] feed再構築: 投稿\(posts.count)件 / 広告在庫\(ads.count)件 → 差し込み\(adIndex)件")
 
         // 在庫が残り少なくなったら追加で事前ロードしておく
         adManager.preloadMoreIfNeeded(remaining: ads.count - adIndex)
