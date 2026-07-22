@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7762C3563010C85B00617E52 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 7762C3553010C85B00617E52 /* GoogleMobileAds */; };
 		778777622FFA8639003FE164 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 778777612FFA8639003FE164 /* WidgetKit.framework */; };
 		778777642FFA8639003FE164 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 778777632FFA8639003FE164 /* SwiftUI.framework */; };
 		778777712FFA863C003FE164 /* PeepholeWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7787775F2FFA8639003FE164 /* PeepholeWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -167,6 +168,7 @@
 				778777972FFAB991003FE164 /* FirebaseAnalytics in Frameworks */,
 				778777B92FFAB991003FE164 /* FirebaseMessaging in Frameworks */,
 				778777B72FFAB991003FE164 /* FirebaseMLModelDownloader in Frameworks */,
+				7762C3563010C85B00617E52 /* GoogleMobileAds in Frameworks */,
 				778777BB2FFAB991003FE164 /* FirebasePerformance in Frameworks */,
 				778777A52FFAB991003FE164 /* FirebaseCore in Frameworks */,
 				7787779D2FFAB991003FE164 /* FirebaseAppCheck in Frameworks */,
@@ -287,6 +289,7 @@
 				778777BC2FFAB991003FE164 /* FirebaseRemoteConfig */,
 				778777BE2FFAB991003FE164 /* FirebaseStorage */,
 				778777C02FFAB991003FE164 /* FirebaseStorageCombine-Community */,
+				7762C3553010C85B00617E52 /* GoogleMobileAds */,
 			);
 			productName = Peephole;
 			productReference = 778777312FFA85D9003FE164 /* Peephole.app */;
@@ -400,6 +403,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				7762C3543010C85B00617E52 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 778777322FFA85D9003FE164 /* Products */;
@@ -624,7 +628,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Peephole/Peephole.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 5B2NQ74986;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -662,7 +666,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Peephole/Peephole.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 5B2NQ74986;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -800,7 +804,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = PeepholeWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 5B2NQ74986;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PeepholeWidget/Info.plist;
@@ -835,7 +839,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = PeepholeWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 5B2NQ74986;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PeepholeWidget/Info.plist;
@@ -914,6 +918,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		7762C3543010C85B00617E52 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 13.6.0;
+			};
+		};
 		778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -925,6 +937,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		7762C3553010C85B00617E52 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7762C3543010C85B00617E52 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
 		778777922FFAB991003FE164 /* FirebaseAI */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 778777912FFAB991003FE164 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

@@ -8,6 +8,7 @@
 import SwiftUI
 import FirebaseCore
 import FirebaseAppCheck
+import GoogleMobileAds
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
@@ -34,9 +35,15 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         }
 
         print("🔵 [APPDELEGATE] Configuring Firebase...")
-        FirebaseApp.configure()
-        print("✅ [APPDELEGATE] Firebase configured")
-        return true
+                FirebaseApp.configure()
+                print("✅ [APPDELEGATE] Firebase configured")
+
+                // AdMob（Google Mobile Ads）の初期化
+                print("🔵 [APPDELEGATE] Starting Google Mobile Ads...")
+                MobileAds.shared.start(completionHandler: nil)
+                print("✅ [APPDELEGATE] Google Mobile Ads started")
+
+                return true
     }
 }
 
